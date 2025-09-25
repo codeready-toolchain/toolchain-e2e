@@ -62,7 +62,7 @@ prepare-and-deploy-e2e: prepare-e2e deploy-e2e
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: verify-migration-and-deploy-e2e
-verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
+verify-migration-and-deploy-e2e: check-quay-login-if-needed prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
 .PHONY: e2e-migration-setup
 e2e-migration-setup:
@@ -307,7 +307,7 @@ get-publish-install-and-register-operators: get-and-publish-host-operator get-an
 get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
 
 .PHONY: get-and-publish-member-operator
-get-and-publish-member-operator: ksctl
+get-and-publish-member-operator: check-quay-login-if-needed ksctl
 ifneq (${MEMBER_NS_2},"")
     ifneq (${MEMBER_NS_2},)
 		$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
@@ -336,7 +336,7 @@ else
 endif
 
 .PHONY: get-and-publish-host-operator
-get-and-publish-host-operator: ksctl
+get-and-publish-host-operator: check-quay-login-if-needed ksctl
 ifneq (${REG_REPO_PATH},"")
     ifneq (${REG_REPO_PATH},)
 		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})

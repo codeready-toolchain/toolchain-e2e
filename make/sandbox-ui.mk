@@ -35,7 +35,7 @@ deploy-sandbox-ui: HOST_NS=$(shell oc get projects -l app=host-operator --output
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
 deploy-sandbox-ui: HOST_OPERATOR_API=https://$(shell oc get route api -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')
 deploy-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
-deploy-sandbox-ui:
+deploy-sandbox-ui: check-quay-login-if-needed
 	$(MAKE) check-sso-credentials
 	@echo "sandbox ui will be deployed in '${SANDBOX_UI_NS}' namespace"
 	$(MAKE) create-namespace SANDBOX_UI_NS=${SANDBOX_UI_NS}
@@ -211,7 +211,7 @@ build-sandbox-ui-e2e-tests:
 
 # Run Developer Sandbox UI e2e tests image using podman
 .PHONY: test-sandbox-ui-in-container
-test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
+test-sandbox-ui-in-container: check-quay-login build-sandbox-ui-e2e-tests
 	@echo "pushing Developer Sandbox UI image..."
 	$(MAKE) push-sandbox-plugin
 	@echo "running the e2e tests in podman container..."
