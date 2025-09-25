@@ -10,24 +10,28 @@ UI_ENVIRONMENT := ui-e2e-tests
 SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
 SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
 
-TAG := $(shell \
+IMAGE_NAME_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin
+
+# if $(REPO_NAME) is not set, it means that the E2E tests were triggered by periodic CI job
+IMAGE_TO_PUSH_IN_QUAY := $(shell \
     if [ -n "$(CI)$(CLONEREFS_OPTIONS)" ]; then \
         if [ -n "$(GITHUB_ACTIONS)" ]; then \
             REPOSITORY_NAME=$$(basename "$(GITHUB_REPOSITORY)"); \
             COMMIT_ID_SUFFIX=$$(echo "$(PULL_PULL_SHA)" | cut -c1-7); \
-            echo "from.$${REPOSITORY_NAME}.PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
+            echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):from.$${REPOSITORY_NAME}.PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
         else \
-            AUTHOR=$$(jq -r '.refs[0].pulls[0].author' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'); \
-            PULL_PULL_SHA=$${PULL_PULL_SHA:-$$(jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')}; \
-            COMMIT_ID_SUFFIX=$$(echo "$${PULL_PULL_SHA}" | cut -c1-7); \
-            echo "from.$(REPO_NAME).PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
+            if [ -z "$(REPO_NAME)" ]; then \
+                echo "quay.io/codeready-toolchain/sandbox-rhdh-plugin:v49"; \
+            else \
+				AUTHOR=$$(jq -r '.refs[0].pulls[0].author' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'); \
+            	PULL_PULL_SHA=$${PULL_PULL_SHA:-$$(jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')}; \
+            	COMMIT_ID_SUFFIX=$$(echo "$${PULL_PULL_SHA}" | cut -c1-7); \
+                echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):from.$(REPO_NAME).PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
+            fi; \
         fi; \
     else \
-        echo "latest"; \
+        echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):latest"; \
     fi)
-
-
-IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
 
 
 .PHONY: deploy-sandbox-ui
