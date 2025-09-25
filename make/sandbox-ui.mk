@@ -12,7 +12,6 @@ SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secr
 
 IMAGE_NAME_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin
 
-# if $(REPO_NAME) is not set, it means that the E2E tests were triggered by periodic CI job
 IMAGE_TO_PUSH_IN_QUAY := $(shell \
     if [ -n "$(CI)$(CLONEREFS_OPTIONS)" ]; then \
         if [ -n "$(GITHUB_ACTIONS)" ]; then \
@@ -20,6 +19,7 @@ IMAGE_TO_PUSH_IN_QUAY := $(shell \
             COMMIT_ID_SUFFIX=$$(echo "$(PULL_PULL_SHA)" | cut -c1-7); \
             echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):from.$${REPOSITORY_NAME}.PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
         else \
+            : "if REPO_NAME is not set, it means that the E2E tests were triggered by periodic CI job"; \
             if [ -z "$(REPO_NAME)" ]; then \
                 echo "quay.io/codeready-toolchain/sandbox-rhdh-plugin:v49"; \
             else \
