@@ -10,6 +10,7 @@ UI_ENVIRONMENT := ui-e2e-tests
 SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
 SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
 
+QUAY_NAMESPACE ?= codeready-toolchain-test
 IMAGE_NAME_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin
 
 IMAGE_TO_PUSH_IN_QUAY := $(shell \
