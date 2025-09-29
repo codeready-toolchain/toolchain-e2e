@@ -202,7 +202,7 @@ test-ui-e2e:
 
 .PHONY: test-ui-e2e-local
 test-ui-e2e-local:
-	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_TMP=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT}
+	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_TMP=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT} PUSH_SANDBOX_IMAGE=true
 
 
 UNIT_TEST_IMAGE_NAME=sandbox-ui-e2e-tests
