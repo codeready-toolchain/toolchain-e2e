@@ -20,14 +20,14 @@ IMAGE_TO_PUSH_IN_QUAY := $(shell \
             COMMIT_ID_SUFFIX=$$(echo "$(PULL_PULL_SHA)" | cut -c1-7); \
             echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):from.$${REPOSITORY_NAME}.PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
         else \
-            : "if REPO_NAME is not set, it means that the E2E tests were triggered by periodic CI job"; \
+            echo "if REPO_NAME is not set, it means that the E2E tests were triggered by periodic CI job"; \
             if [ -z "$(REPO_NAME)" ]; then \
                 echo "quay.io/codeready-toolchain/sandbox-rhdh-plugin:v49"; \
             else \
 				AUTHOR=$$(jq -r '.refs[0].pulls[0].author' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'); \
             	PULL_PULL_SHA=$${PULL_PULL_SHA:-$$(jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')}; \
             	COMMIT_ID_SUFFIX=$$(echo "$${PULL_PULL_SHA}" | cut -c1-7); \
-                echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):from.$(REPO_NAME).PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
+                echo "$(IMAGE_NAME_TO_PUSH_IN_QUAY):from.$$(echo $(REPO_NAME) | sed 's/\"//g').PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
             fi; \
         fi; \
     else \
