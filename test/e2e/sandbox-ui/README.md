@@ -16,7 +16,7 @@ The UI E2E tests are executed against the Developer Sandbox UI running in OpenSh
 
 `make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} PUSH_SANDBOX_IMAGE=true`
 
-If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} PUSH_SANDBOX_IMAGE=true`
+If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 For now, the UI E2E tests are running only through the Firefox browser.
 
