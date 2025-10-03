@@ -34,11 +34,6 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// user & idlers for standard workloads
 	idler, idlerNoise := prepareIdlerUser(t, await, "test-idler")
 
-	// Create an Ansible Automation Platform resource
-	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", idler.Name, wait.WithSandboxPriorityClass())
-	// Create KServe ServingRuntime and InferenceService resources
-	prepareKServeWorkloads(t, await.Member1(), "test-idler-kserve", idler.Name, wait.WithSandboxPriorityClass())
-
 	// Create payloads for both users
 	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
 	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
@@ -95,8 +90,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the AAP resource to be idled.
-	// The pods which owned by this AAP are still running because there is no AAP controller to shut them down.
-	// So we just need to verify that aap.Spec.Idle_aap is set to "true" by the idler.
+	// The pods are idled already as well (verified in the previous  - after some time, the idler idles the
+	// second-top-parent when the pod is still running
 	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", idler.Name, clnt.Resource(aapRes), true)
@@ -104,6 +99,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 
 	// Wait for the InferenceService to be deleted - the expected action to idle
 	// the workload is by deleting the InferenceService that is old enough.
+	// The pods are idled already as well (verified in the previous  - after some time, the idler idles the
+	// second-top-parent when the pod is still running
 	err = memberAwait.WaitUntilInferenceServiceDeleted(t, "test-idler-kserve", idler.Name, clnt.Resource(inferenceServiceRes))
 	require.NoError(t, err)
 }
@@ -128,18 +125,6 @@ func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*tool
 	idlerNoise, err := memberAwait.WaitForIdler(t, name+"-stage", wait.IdlerConditions(wait.Running()))
 	require.NoError(t, err)
 	return idler, idlerNoise
-}
-
-// prepareAAPWorkloads prepares an Ansible Automation Platform instance with one deployment owned by it and waits for the pods to run
-func prepareAAPWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
-	aapDeployment := createAAP(t, memberAwait, name, namespace)
-	n := int(*aapDeployment.Spec.Replicas) // total number of created pods
-
-	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
-		wait.WithPodLabel("app", name))...)
-	require.NoError(t, err)
-
-	return pods
 }
 
 func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
@@ -168,6 +153,13 @@ func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 
 	rc := createReplicationController(t, memberAwait, namespace)
 	n = n + int(*rc.Spec.Replicas)
+
+	// Create an Ansible Automation Platform resource
+	aapDeployment := createAAP(t, memberAwait, "test-idler-aap", namespace)
+	n = n + int(*aapDeployment.Spec.Replicas)
+
+	servingRuntimeDeployment := createKServeWorkloads(t, memberAwait, "test-idler-kserve", namespace)
+	n = n + int(*servingRuntimeDeployment.Spec.Replicas)
 
 	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
 		wait.WithPodLabel("idler", "idler"))...)
@@ -389,18 +381,6 @@ func aapResource(name string) *unstructured.Unstructured {
 			},
 		},
 	}
-}
-
-// prepareKServeWorkloads prepares ServingRuntime and InferenceService instances with one deployment owned by ServingRuntime and waits for the pods to run
-func prepareKServeWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
-	servingRuntimeDeployment := createKServeWorkloads(t, memberAwait, name, namespace)
-	n := int(*servingRuntimeDeployment.Spec.Replicas) // total number of created pods
-
-	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
-		wait.WithPodLabel("app", name))...)
-	require.NoError(t, err)
-
-	return pods
 }
 
 // createKServeWorkloads creates ServingRuntime and InferenceService instances with one deployment owned by ServingRuntime
