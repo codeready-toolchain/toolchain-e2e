@@ -90,8 +90,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the AAP resource to be idled.
-	// The pods are idled already as well (verified in the previous  - after some time, the idler idles the
-	// second-top-parent when the pod is still running
+	// The pods are idled as well, which is verified in the previous step - after some time,
+	// the idler idles the second-top-owner when the pod is still running
 	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", idler.Name, clnt.Resource(aapRes), true)
@@ -99,8 +99,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 
 	// Wait for the InferenceService to be deleted - the expected action to idle
 	// the workload is by deleting the InferenceService that is old enough.
-	// The pods are idled already as well (verified in the previous  - after some time, the idler idles the
-	// second-top-parent when the pod is still running
+	// The pods are idled as well, which is verified in the previous step - after some time,
+	// the idler idles the second-top-owner when the pod is still running
 	err = memberAwait.WaitUntilInferenceServiceDeleted(t, "test-idler-kserve", idler.Name, clnt.Resource(inferenceServiceRes))
 	require.NoError(t, err)
 }
