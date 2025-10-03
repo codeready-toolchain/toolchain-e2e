@@ -52,6 +52,7 @@ test-e2e-with-ui: INSTALL_OPERATOR=true
 test-e2e-with-ui: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics test-ui-e2e
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
+	@echo "To clean the Developer Sandbox UI run 'make clean-sandbox-ui'"
 
 .PHONY: test-e2e-without-migration
 ## Run the e2e tests without migration tests
