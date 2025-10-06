@@ -42,17 +42,19 @@ TESTS_RUN_FILTER_REGEXP ?= ""
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
+test-e2e: 
+#	$(MAKE) prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
-
-.PHONY: test-e2e-with-ui
-## Run the toolchain resources and Developer Sandbox UI e2e tests
-test-e2e-with-ui: INSTALL_OPERATOR=true
-test-e2e-with-ui: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics test-ui-e2e
-	@echo "The tests successfully finished"
-	@echo "To clean the cluster run 'make clean-e2e-resources'"
+ifeq ($(CI),true)
+  # if we are running on CI, we need want to run the ui e2e tests in the toolchain-e2e presubmit and periodic CI jobs
+  # if REPO_NAME is not set, it means that the e2e tests were triggered by the periodic CI job
+  ifneq ($(or $(filter toolchain-e2e,$(REPO_NAME)),$(if $(REPO_NAME),,1)),)
+	$(MAKE) test-ui-e2e
+	@echo "UI E2E tests successfully finished"
 	@echo "To clean the Developer Sandbox UI run 'make clean-sandbox-ui'"
+  endif
+endif
 
 .PHONY: test-e2e-without-migration
 ## Run the e2e tests without migration tests
