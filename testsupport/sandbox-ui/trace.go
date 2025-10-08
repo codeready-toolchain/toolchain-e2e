@@ -22,10 +22,16 @@ func trace(t *testing.T, context playwright.BrowserContext, testName string) {
 
 	dir, err := os.Getwd()
 	require.NoError(t, err)
-	tracePath := filepath.Join(dir, fmt.Sprintf("../../trace/trace-%s.zip", testName))
+	tracePath := filepath.Join(dir, "..", "..", "trace", fmt.Sprintf("trace-%s.zip", testName))
 
 	if os.Getenv("RUNNING_IN_CONTAINER") == "true" {
-		tracePath = filepath.Join(os.Getenv("E2E_REPO_PATH"), fmt.Sprintf("/trace/trace-%s.zip", testName))
+		tracePath = filepath.Join(os.Getenv("E2E_REPO_PATH"), "trace", fmt.Sprintf("trace-%s.zip", testName))
+	}
+
+	if os.Getenv("CI") == "true" {
+		// save trace in the job CI artifact directory
+		// artifacts/e2e/test/artifacts/sandbox-ui/trace/trace-%s.zip
+		tracePath = filepath.Join(os.Getenv("ARTIFACT_DIR"), "sandbox-ui", "trace", fmt.Sprintf("trace-%s.zip", testName))
 	}
 
 	t.Cleanup(func() {
