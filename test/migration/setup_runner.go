@@ -166,8 +166,17 @@ func (r *SetupMigrationRunner) prepareDeactivatedUser(t *testing.T) {
 	t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 	// verify that MUR is deleted
-	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername) // TODO wait for space deletion too after Space migration is done
+	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
+
+	// verify that space (and space binding) is deleted, to be sure that the space counter is decremented
+	err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
+	require.NoError(t, err)
+
+	// let's wait until ToolchainStatus is updated with the latest numbers from the space counter
+	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
+
 }
 
 func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
@@ -185,6 +194,15 @@ func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
 	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(t, userSignup.Name,
 		wait.ContainsCondition(wait.Banned()[0]))
 	require.NoError(t, err)
+
+	// verify that space (and space binding) is deleted, to be sure that the space counter is decremented
+	err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
+	require.NoError(t, err)
+
+	// let's wait until ToolchainStatus is updated with the latest numbers from the space counter
+	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
+
 }
 
 func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser(t *testing.T) {
