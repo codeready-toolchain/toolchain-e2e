@@ -49,7 +49,7 @@ test-e2e:
 ifeq ($(CI),true)
   # if we are running on CI, we want to run the ui e2e tests in the toolchain-e2e presubmit and periodic CI jobs
   # if REPO_NAME is not set, it means that the e2e tests were triggered by the periodic CI job
-  ifneq ($(or $(filter toolchain-e2e,$(REPO_NAME)),$(if $(REPO_NAME),,1)),)
+  ifeq ($(filter-out toolchain-e2e,$(REPO_NAME)),)
 	$(MAKE) test-ui-e2e
 	@echo "UI E2E tests successfully finished"
 	@echo "To clean the Developer Sandbox UI run 'make clean-sandbox-ui'"
