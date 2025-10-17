@@ -50,15 +50,19 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 		})
 	require.NoError(t, err)
 
+	// Check notification was created BEFORE waiting for all pods to be deleted.
+	// The notification is created almost immediately when idling starts, but it's automatically
+	// deleted after a short duration (5s in e2e tests). If we wait for all pods to be deleted
+	// first, the notification may already be gone by the time we check for it, causing intermittent
+	// test failures.
+	_, err = hostAwait.WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
+	require.NoError(t, err)
+
 	// Wait for the pods to be deleted
 	for _, p := range podsToIdle {
 		err := memberAwait.WaitUntilPodsDeleted(t, p.Namespace, wait.WithPodName(p.Name))
 		require.NoError(t, err)
 	}
-
-	// check notification was created
-	_, err = hostAwait.WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.NoError(t, err)
 
 	// make sure that "noise" pods are still there, and notification is not created for stage namespace
 	_, err = memberAwait.WaitForPods(t, idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
