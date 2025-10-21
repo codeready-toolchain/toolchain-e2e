@@ -1037,7 +1037,7 @@ func signupHasExpectedClaims(claims map[string]string) func(c *GetSignupClient) 
 	return func(c *GetSignupClient) {
 		for expectedClaim, expectedClaimValue := range claims {
 			actualClaimValue, claimFound := c.responseBody[expectedClaim]
-			require.True(c.t, claimFound, "unable to find expected claim [%s]. Claims found %v", expectedClaim, claims)
+			require.True(c.t, claimFound, "unable to find expected claim [%s]. Claims found %v", expectedClaim, c.responseBody)
 			require.Equal(c.t, expectedClaimValue, actualClaimValue, "expected claim value [%s] doesn't match actual claim value [%s]", expectedClaimValue, actualClaimValue)
 		}
 	}
