@@ -735,6 +735,10 @@ func TestForceMetricsSynchronization(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
+			// wait for the deployment to be ready again (this ensures pods are deleted and recreated)
+			hostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
+			// wait for metrics service to be available
+			hostAwait.WaitForMetricsService(t)
 			// metrics have not changed yet
 			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
@@ -750,6 +754,10 @@ func TestForceMetricsSynchronization(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
+			// wait for the deployment to be ready again (this ensures pods are deleted and recreated)
+			hostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
+			// wait for metrics service to be available
+			hostAwait.WaitForMetricsService(t)
 			// metrics have been updated
 			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
