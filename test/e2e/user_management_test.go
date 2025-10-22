@@ -11,6 +11,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -563,6 +564,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
 		CreateBannedUser(s.T(), s.Host(), email)
+
+		// Wait for the BannedUser to be available before testing registration service
+		emailHash := hash.EncodeString(email)
+		_, err := hostAwait.WaitForBannedUser(s.T(), emailHash)
+		require.NoError(s.T(), err)
 
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
