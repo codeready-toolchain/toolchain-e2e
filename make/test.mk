@@ -43,7 +43,7 @@ TESTS_RUN_FILTER_REGEXP ?= ""
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
 test-e2e: 
-	$(MAKE) prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
+	$(MAKE) prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics INSTALL_OPERATOR=${INSTALL_OPERATOR}
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 ifeq ($(CI),true)
@@ -74,7 +74,6 @@ prepare-and-deploy-e2e: prepare-e2e deploy-e2e
 .PHONY: verify-migration-and-deploy-e2e
 verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
-.PHONY: e2e-migration-setup
 e2e-migration-setup:
 	@echo "Setting up the environment before testing the operator migration..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/setup"
