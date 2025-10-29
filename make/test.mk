@@ -86,7 +86,7 @@ e2e-migration-verify:
 	@echo "Migration tests successfully finished"
 
 .PHONY: e2e-deploy-latest
-e2e-deploy-latest: INSTALL_OPERATOR=true
+e2e-deploy-latest:
 e2e-deploy-latest:
 	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true KSCTL_TLS_VERIFY_PARAM=${KSCTL_TLS_VERIFY_PARAM}
 
@@ -314,7 +314,7 @@ get-publish-install-and-register-operators: get-and-publish-host-operator get-an
 #			 The reason is that when the host operator is installed, then the logic creates ToolchainConfig CR which
 #			 defines that the webhook should be deployed from the first member instance (and not from the second one).
 #			 This is important to set before the member operators are installed, otherwise, it can lead to flaky e2e tests.
-get-publish-and-install-operators: INSTALL_OPERATOR=true
+get-publish-and-install-operators:
 get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
 
 .PHONY: get-and-publish-member-operator
