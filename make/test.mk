@@ -87,7 +87,6 @@ e2e-migration-verify:
 
 .PHONY: e2e-deploy-latest
 e2e-deploy-latest:
-e2e-deploy-latest:
 	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true KSCTL_TLS_VERIFY_PARAM=${KSCTL_TLS_VERIFY_PARAM}
 
 .PHONY: prepare-e2e
