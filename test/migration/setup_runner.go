@@ -172,11 +172,6 @@ func (r *SetupMigrationRunner) prepareDeactivatedUser(t *testing.T) {
 	// verify that space (and space binding) is deleted, to be sure that the space counter is decremented
 	err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
-
-	// let's wait until ToolchainStatus is updated with the latest numbers from the space counter
-	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-	require.NoError(t, err)
-
 }
 
 func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
@@ -198,11 +193,6 @@ func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
 	// verify that space (and space binding) is deleted, to be sure that the space counter is decremented
 	err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
-
-	// let's wait until ToolchainStatus is updated with the latest numbers from the space counter
-	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-	require.NoError(t, err)
-
 }
 
 func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser(t *testing.T) {
