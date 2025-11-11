@@ -17,6 +17,7 @@ spec:
       environment: 'e2e-tests'
       # same number that is set in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/registration-service/registration-service.yaml#L272-L273
       replicas: 3
+      workatoWebHookURL: https://webhooks.testwebhook
       verification:
         enabled: true
         excludedEmailDomains: 'redhat.com,acme.com'

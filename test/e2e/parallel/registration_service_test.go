@@ -990,6 +990,35 @@ func TestUsernames(t *testing.T) {
 	})
 }
 
+func TestUIConfig(t *testing.T) {
+	// given
+	t.Parallel()
+	awaitilities := WaitForDeployments(t)
+	route := awaitilities.Host().RegistrationServiceURL
+	// Create a token that will be used to invoke the /uiconfig api
+	identity := commonauth.NewIdentity()
+	emailValue := identity.Username + "@some.domain"
+	emailClaim := commonauth.WithEmailClaim(emailValue)
+	token, err := commonauth.GenerateSignedE2ETestToken(*identity, emailClaim)
+	require.NoError(t, err)
+
+	t.Run("get uiconfig 200 response", func(t *testing.T) {
+		// given
+		// we have a user in the system
+
+		// when
+		// we call the get uiconfig endpoint to get ui configuration
+		response := NewHTTPRequest(t).
+			InvokeEndpoint("GET", route+"/api/v1/uiconfig", token, "", http.StatusOK).UnmarshalMap()
+
+		// then
+		// verify that the expected URL is there
+		workatoWebHookURL, ok := response["workatoWebHookURL"].(map[string]interface{})
+		require.True(t, ok)
+		assert.Equal(t, "https://webhooks.testwebhook", workatoWebHookURL)
+	})
+}
+
 func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.UserSignup, string) {
 	route := hostAwait.RegistrationServiceURL
 
