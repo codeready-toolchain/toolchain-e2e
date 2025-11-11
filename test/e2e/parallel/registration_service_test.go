@@ -1013,7 +1013,7 @@ func TestUIConfig(t *testing.T) {
 
 		// then
 		// verify that the expected URL is there
-		workatoWebHookURL, ok := response["workatoWebHookURL"].(map[string]interface{})
+		workatoWebHookURL, ok := response["workatoWebHookURL"].(string)
 		require.True(t, ok)
 		assert.Equal(t, "https://webhooks.testwebhook", workatoWebHookURL)
 	})
