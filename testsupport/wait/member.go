@@ -2201,11 +2201,11 @@ func (a *MemberAwaitility) waitForService(t *testing.T) {
 
 func (a *MemberAwaitility) waitForWebhookDeployment(t *testing.T, image string) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
-	actualDeployment := a.WaitForDeploymentToGetReady(t, "member-operator-webhook", 1,
+	actualDeployment := a.WaitForDeploymentToGetReady(t, "member-operator-webhook", 3,
 		DeploymentHasContainerWithImage("mutator", image))
 
 	assert.Equal(t, bothWebhookLabels, actualDeployment.Labels)
-	assert.Equal(t, int32(1), *actualDeployment.Spec.Replicas)
+	assert.Equal(t, int32(3), *actualDeployment.Spec.Replicas)
 	assert.Equal(t, appMemberOperatorWebhookLabel, actualDeployment.Spec.Selector.MatchLabels)
 
 	template := actualDeployment.Spec.Template
