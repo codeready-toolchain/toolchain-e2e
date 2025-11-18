@@ -185,8 +185,12 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi"),
-		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
+		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi", map[corev1.ResourceName]string{
+			corev1.ResourceName("requests.nvidia.com/gpu"): "0",
+		}),
+		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi", map[corev1.ResourceName]string{
+			corev1.ResourceName("requests.nvidia.com/gpu"): "0",
+		}),
 		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
@@ -317,7 +321,7 @@ type appstudioTierChecks struct {
 
 func commonAppstudioTierChecks() []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi", nil),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
@@ -340,7 +344,7 @@ func commonAppstudioTierChecks() []namespaceObjectsCheck {
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
-		resourceQuotaComputeBuild("120", "128Gi", "60", "64Gi"),
+		resourceQuotaComputeBuild("120", "128Gi", "60", "64Gi", nil),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
@@ -431,7 +435,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeBuild("480", "512Gi", "240", "256Gi"),
+		resourceQuotaComputeBuild("480", "512Gi", "240", "256Gi", nil),
 		resourceQuotaStorage("50Gi", "400Gi", "50Gi", "180"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
@@ -459,7 +463,7 @@ type appstudioEnvTierChecks struct {
 
 func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi", nil),
 		zeroResourceQuotaComputeBuild(),
 		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
@@ -626,7 +630,7 @@ func rbacEditRole() spaceRoleObjectsCheck {
 	}
 }
 
-func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
+func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest string, additionalResources map[corev1.ResourceName]string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		var err error
 		spec := corev1.ResourceQuotaSpec{
@@ -641,6 +645,10 @@ func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
+		for resourceName, quantity := range additionalResources {
+			spec.Hard[resourceName], err = resource.ParseQuantity(quantity)
+			require.NoError(t, err)
+		}
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "compute-deploy", criteria)
@@ -648,7 +656,7 @@ func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest
 	}
 }
 
-func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
+func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest string, additionalResources map[corev1.ResourceName]string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		var err error
 		spec := corev1.ResourceQuotaSpec{
@@ -663,6 +671,10 @@ func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest 
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
+		for resourceName, quantity := range additionalResources {
+			spec.Hard[resourceName], err = resource.ParseQuantity(quantity)
+			require.NoError(t, err)
+		}
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "compute-build", criteria)
