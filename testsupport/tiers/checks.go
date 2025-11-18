@@ -166,7 +166,10 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "60Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "60Gi", map[corev1.ResourceName]string{
+			corev1.ResourceName("requests.nvidia.com/gpu"): "0",
+			corev1.ResourceName("limits.nvidia.com/gpu"):   "0",
+		}),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -187,9 +190,11 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi", map[corev1.ResourceName]string{
 			corev1.ResourceName("requests.nvidia.com/gpu"): "0",
+			corev1.ResourceName("limits.nvidia.com/gpu"):   "0",
 		}),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi", map[corev1.ResourceName]string{
 			corev1.ResourceName("requests.nvidia.com/gpu"): "0",
+			corev1.ResourceName("limits.nvidia.com/gpu"):   "0",
 		}),
 		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
@@ -1111,7 +1116,7 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 	}
 }
 
-func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheckCreator { // nolint:unparam
+func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string, additionalResources map[corev1.ResourceName]string) clusterObjectsCheckCreator { // nolint:unparam
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
@@ -1132,6 +1137,10 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 			require.NoError(t, err)
+			for resourceName, quantity := range additionalResources {
+				hard[resourceName], err = resource.ParseQuantity(quantity)
+				require.NoError(t, err)
+			}
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-compute", userName),
 				crqToolchainLabelsWaitCriterion(userName),
