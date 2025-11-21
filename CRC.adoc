@@ -1,80 +1,271 @@
 :imagesdir: doc/images
 
-==== Step by Step Guide - CRC (CodeReady Containers)
+== Step-by-step guide — CRC (CodeReady Containers)
 
-IMPORTANT: CodeReady Containers includes an embedded system bundle that contains certificates which expire 30 days after the release.  Because of this it is very important to always run the latest release of CRC.
+IMPORTANT: CodeReady Containers includes an embedded system bundle that contains certificates which expire 30 days
+after the release.  Because of this it is very important to always run the latest release of CRC.
 
-CodeReady Containers is a distribution of OpenShift designed to be run on a development PC, and while some features have been disabled by default it is still quite demanding in terms of system resources, and for this reason it is recommended that it be installed on a machine that has at least 32GB of memory.
+CodeReady Containers is a distribution of OpenShift designed to be run on a development PC, and while some features
+have been disabled by default it is still quite demanding in terms of system resources, and for this reason it is
+recommended that it be installed on a machine that has at least 32GB of memory.
 
-This guide will walk through the steps of downloading and install CRC, and running the e2e tests against local Codeready Toolchain host-operator and member-operator repositories.
+This guide will walk through the steps of downloading and installing CRC, and running the e2e tests against local
+Codeready Toolchain `host-operator` and `member-operator` repositories.
 
-1. Download CodeReady Containers from https://developers.redhat.com/products/codeready-containers/overview[developers.redhat.com].
-You will need to login using your Red Hat SSO account, after which you may click on the `Install OpenShift on your laptop` button which will take you to the download page for CRC.  From here, select your OS before clicking `Download CodeReady Containers`.  You will also need to download your pull secret, and keep that in a safe place.
-+
-image::download.png[align="center"]
+=== Install the required tools
 
-2. Extract the downloaded file into a directory of your choice.
-+
-image::extract_crc.png[align="center"]
-+
-You may also wish to add this directory to your path so that you can run the `crc` command from anywhere.
+Please check the xref:required_tools.adoc[Required Tools] page and install those tools and utilities before proceeding,
+as otherwise you will experience test failures and having to restart the tests from the beginning.
 
-3. Enable Cluster Monitoring, which is required for tests to pass by running the following command:
-+
-`crc config set enable-cluster-monitoring true`
+=== Download and install CRC
+Download CodeReady Containers from https://developers.redhat.com/products/codeready-containers/overview[developers.redhat.com].
+You will need to log in using your Red Hat SSO account, after which you may click on the `Install OpenShift on your
+laptop` button which will take you to the download page for CRC. From here, select your OS before clicking `Download
+CodeReady Containers`. You will also need to download your pull secret, and keep that in a safe place.
 
-4. Since cluster monitoring requires at least 14GB of virtual machine memory, you also need to increase the default by running the following command - the value here is sufficient but you may make it higher if desired:
-+
-`crc config set memory 14500`
+image::openshift_crc_download.png[align="center"]
 
-5. Set the `QUAY_NAMESPACE` environment variable to your quay username:
-+
-`export QUAY_NAMESPACE=<quay-username>`
+Extract the downloaded file into a directory of your choice:
 
-6. Ensure that the following Quay repositories are set to public:
-+
-* host-operator
-* member-operator
-* member-operator-webhook
-* registration-service
+[source,bash]
+----
+tar -xvf crc-linux-amd64.tar.xz
+----
 
-You can find these on the https://quay.io/repository/[Repository] page at quay.io:
+Give execution permissions to the binary and move it to a directory on your path or `/usr/local/bin`:
 
-image::quay_repo.png[align=center]
+[source,bash]
+----
+chmod u+x crc
+sudo mv crc /usr/local/bin
+----
 
-Click on the repository name, then click on the settings icon:
+=== Set up the cluster and enable or tweak the cluster's settings
 
-image::quay_repo_detail.png[align=center]
+You need to set up CRC — the daemons, configurations and basic settings for it to be able to run — by running the
+command below. You only need to do it the first time you're setting up the cluster or after running `crc cleanup`:
 
-Scroll down to the *Repository Visibility* section, and ensure the repository is set to public:
+[source,bash]
+----
+crc setup
+----
 
-image::quay_repo_visibility.png[align=center]
+Also, in order to run the tests seamlessly and without any problems, there is a set of settings you are advised to
+change:
 
-7. Start the CRC container by executing `crc start`. This will take a few minutes to complete, and the output should look something like this:
+[source,bash]
+----
+# Cluster monitoring is required for the tests to pass
+crc config set enable-cluster-monitoring true
 
-image::crc_start_output.png[align=center]
+# A minimum of 14GB of virtual machine memory is required to run by default, so it is recommended to change that
+# setting. Tweaking the CPUs and disk size is optional, but also recommended to avoid having issues down the line.
+crc config set cpus 8
+crc config set disk-size 50
+crc config set memory 14500 # or 20000 for 20GB
+----
 
-Take note of the `oc login...` command shown in the output.
+Now you can go ahead and start the cluster. The first time you will need to provide the pull secret you were presented
+with in the CRC download page — if you didn't grab it you can come back and copy it. Run the following command to start
+the cluster.
 
-8. Execute the following command to set up the necessary environment variables:
+[source,bash]
+----
+crc start
+----
 
-`eval $(crc oc-env)`
+While CRC boots, you can go ahead and prepare the Quay repositories and the local ones to be able to run the tests.
 
-9. Log into the cluster by executing the `oc login` command as shown in the resulting output from running `crc start` in the previous step.  The output should look something like this:
-+
-image::crc_oc_login.png[align=center]
+=== Prepare the projects
+==== Creating the Quay repositories and making them public
 
-10. Check out the CodeReady Toolchain `host-operator` and `member-operator` repositories and ensure that they are located at the same directory level as the `toolchain-e2e` repository.
-+
-* https://github.com/codeready-toolchain/host-operator
-* https://github.com/codeready-toolchain/member-operator
-+
-11. Change into the `toolchain-e2e` directory, and execute the tests.  It is recommended that you direct console output to a text file, as the test output is of significant length and is likely to be longer than your console buffer:
-+
-`make test-e2e-local >testoutput.txt`:
-+
+The end-to-end local tests build and push images to the Quay registry, so in order to avoid having issues with your
+CRC cluster being unable to pull them from a non-public repository, you need to create those repositories and make them
+"public". Follow the following steps for that:
 
+1. Log in to https://quay.io.
+2. Go to the repository section, or click on the following link: https://quay.io/repository.
+3. Click on the "Create new repository" button.
+4. Select your personal namespace if it is not already selected for you, give the repository an appropriate name, and
+choose "Public" as the repository's visibility.
+5. Click on "Create".
 
+The repositories that you need to create and mark public need to be named as follows:
 
+* `host-operator-bundle`
+* `host-operator-index`
+* `host-operator`
+* `member-operator-bundle`
+* `member-operator-index`
+* `member-operator-webhook`
+* `member-operator`
+* `registration-service`
 
+==== Cloning the operator repositories
 
+In order to run the tests, you need to clone the repositories listed below *at the same directory level* as the
+`toolchain-e2e` repository, which should result in a directory structure like this:
+
+[source,text]
+----
+.
+├── host-operator
+├── member-operator
+├── registration-service
+└── toolchain-e2e
+----
+
+* https://github.com/codeready-toolchain/host-operator[host-operator]
+* https://github.com/codeready-toolchain/member-operator[member-operator]
+* https://github.com/codeready-toolchain/registration-service[registration-service]
+
+=== Final steps and running the tests
+
+After some time has passed, the CRC cluster might be ready to work with. The terminal should show an output similar to
+the following one:
+
+[source,text]
+----
+INFO Using bundle path /home/${USER}/.crc/cache/crc_libvirt_4.19.8_amd64.crcbundle
+INFO Checking if running as non-root
+INFO Checking if running inside WSL2
+INFO Checking if crc-admin-helper executable is cached
+INFO Checking if running on a supported CPU architecture
+INFO Checking if crc executable symlink exists
+INFO Checking minimum RAM requirements
+INFO Check if Podman binary exists in: /home/${USER}/.crc/bin/oc
+INFO Checking if Virtualization is enabled
+INFO Checking if KVM is enabled
+INFO Checking if libvirt is installed
+INFO Checking if user is part of libvirt group
+INFO Checking if active user/process is currently part of the libvirt group
+INFO Checking if libvirt daemon is running
+INFO Checking if a supported libvirt version is installed
+INFO Checking if crc-driver-libvirt is installed
+INFO Checking crc daemon systemd socket units
+INFO Checking if vsock is correctly configured
+INFO Loading bundle: crc_libvirt_4.19.8_amd64...
+CRC requires a pull secret to download content from Red Hat.
+You can copy it from the Pull Secret section of https://console.redhat.com/openshift/create/local.
+? Please enter the pull secret ***********************************************************************************************************************************************************************************************************************************************************************************************************
+
+INFO Creating CRC VM for OpenShift 4.19.8...
+INFO Generating new SSH key pair...
+INFO Generating new password for the kubeadmin user
+INFO Starting CRC VM for openshift 4.19.8...
+INFO CRC instance is running with IP 127.0.0.1
+INFO CRC VM is running
+INFO Updating authorized keys...
+INFO Resizing /dev/vda4 filesystem
+INFO Configuring shared directories
+INFO Check internal and public DNS query...
+INFO Check DNS query from host...
+INFO Verifying validity of the kubelet certificates...
+INFO Starting kubelet service
+INFO Waiting for kube-apiserver availability... [takes around 2min]
+INFO Adding user's pull secret to the cluster...
+INFO Updating SSH key to machine config resource...
+INFO Waiting until the user's pull secret is written to the instance disk...
+INFO Overriding password for developer user
+INFO Changing the password for the users
+INFO Updating cluster ID...
+INFO Enabling cluster monitoring operator...
+INFO Updating root CA cert to admin-kubeconfig-client-ca configmap...
+INFO Starting openshift instance... [waiting for the cluster to stabilize]
+INFO 2 operators are progressing: authentication, console
+INFO 2 operators are progressing: authentication, console
+INFO 2 operators are progressing: console, monitoring
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO Operator monitoring is progressing
+INFO All operators are available. Ensuring stability...
+INFO Operators are stable (2/3)...
+INFO 2 operators are progressing: console, openshift-controller-manager
+INFO All operators are available. Ensuring stability...
+INFO Operators are stable (2/3)...
+WARN Cluster is not ready: cluster operators are still not stable after 10m0.700913862s
+INFO Adding crc-admin and crc-developer contexts to kubeconfig...
+Started the OpenShift cluster.
+
+The server is accessible via web console at:
+  https://console-openshift-console.apps-crc.testing
+
+Log in as administrator:
+  Username: kubeadmin
+  Password: ${KUBEADMIN_PASSWORD}
+
+Log in as user:
+  Username: developer
+  Password: ${DEVELOPER_PASSWORD}
+
+Use the 'oc' command line interface:
+  $ eval $(crc oc-env)
+  $ oc login -u developer https://api.crc.testing:6443
+----
+
+Add the `oc` executable to your current path by running the following command:
+
+[source,bash]
+----
+eval $(crc oc-env)
+----
+
+Now, log in as the *kubeadmin* user, since you need the required privileges to manage namespaces, install operators,
+clean up resources and what not. Your login command should look something similar to this:
+
+[source,bash]
+----
+oc login -u kubeadmin -p ${KUBEADMIN_PASSWORD} https://api.crc.testing:6443
+----
+
+Also, make sure you're logged in to Quay with Podman:
+
+[source,bash]
+----
+podman login quay.io
+----
+
+Finally, run the tests with the following command while you're on the `toolchain-e2e` repository:
+
+[source,bash]
+----
+# It is recommended to redirect the output so that it doesn't overflow your terminal's buffer, and so that you can
+# check the entirety of the output.
+#
+# Make sure to export the variable with your Quay username, so the tests can use your Quay repository instead of the
+# team's ones. In case it doesn't work, you can always add "QUAY_NAMESPACE=${YOUR_USERNAME}" in front of the "make"
+# command.
+export QUAY_NAMESPACE=${YOUR_QUAY_USERNAME}
+
+make test-e2e-local > testoutput.txt
+----
+
+=== Cleaning up
+
+After a run, regardless of whether it was successful or not, you can — and it is recommended to — run the following
+target to clean up the resources in the CRC cluster:
+
+[source,bash]
+----
+make clean-e2e-resources
+----
+
+If for some reason the cleaning up of the resources gets stuck, you can run the following target before running the
+"clean" target again to remove the finalizers that prevent the cleanup:
+
+[source,bash]
+----
+make force-remove-finalizers-from-e2e-resources
+
+# Rerun the cleanup again.
+make clean-e2e-resources
+----
