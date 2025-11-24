@@ -1,27 +1,27 @@
 :imagesdir: doc/images
 
-== Step-by-step guide — OpenShift local (formerly CRC, CodeReady Containers)
+== Setting up OpenShift Local (formerly CRC, CodeReady Containers) — Step-by-step guide
 
-IMPORTANT: OpenShift local includes an embedded system bundle that contains certificates which expire 30 days
-after the release.  Because of this it is very important to always run the latest release of OpenShift local.
+IMPORTANT: OpenShift Local includes an embedded system bundle that contains certificates which expire 30 days
+after the release. Because of this it is very important to always run the latest release of OpenShift Local.
 
-OpenShift local is a distribution of OpenShift designed to be run on a development PC, and while some features have
+OpenShift Local is a distribution of OpenShift designed to be run on a development PC, and while some features have
 been disabled by default it is still quite demanding in terms of system resources, and for this reason it is
 recommended that it be installed on a machine that has at least 32GB of memory.
 
-This guide will walk through the steps of downloading and installing OpenShift local, and running the e2e tests against
-local Codeready Toolchain `host-operator` and `member-operator` repositories.
+This guide will walk through the steps of downloading and installing OpenShift Local, and running the e2e tests against
+local CodeReady Toolchain `host-operator` and `member-operator` repositories.
 
 === Install the required tools
 
 Please check the xref:required_tools.adoc[Required Tools] page and install those tools and utilities before proceeding,
 as otherwise you will experience test failures and having to restart the tests from the beginning.
 
-=== Download and install OpenShift local
-Download OpenShift local from https://developers.redhat.com/products/openshift-local/overview[developers.redhat.com].
+=== Download and install OpenShift Local
+Download OpenShift Local from https://developers.redhat.com/products/openshift-local/overview[developers.redhat.com].
 You will need to log in using your Red Hat SSO account, after which you may click on the `Install OpenShift on your
-laptop` button which will take you to the download page for OpenShift local. From here, select your OS before clicking
-`Download OpenShift local`. You will also need to download your pull secret, and keep that in a safe place.
+laptop` button which will take you to the download page for OpenShift Local. From here, select your OS before clicking
+`Download OpenShift Local`. You will also need to download your pull secret, and keep that in a safe place.
 
 image::openshift_local_download.png[align="center"]
 
@@ -42,7 +42,7 @@ sudo mv crc /usr/local/bin
 
 === Set up the cluster and enable or tweak the cluster's settings
 
-You need to set up the OpenShift local cluster — the daemons, configurations and basic settings for it to be able to
+You need to set up the OpenShift Local cluster — the daemons, configurations and basic settings for it to be able to
 run — by running the command below. You only need to do it the first time you're setting up the cluster or after
 running `crc cleanup`:
 
@@ -61,13 +61,13 @@ crc config set enable-cluster-monitoring true
 
 # A minimum of 14GB of virtual machine memory is required to run by default, so it is recommended to change that
 # setting. Tweaking the CPUs and disk size is optional, but also recommended to avoid having issues down the line.
-crc config set cpus 8
+crc config set cpus 6
 crc config set disk-size 50
-crc config set memory 14500 # or 20000 for 20GB
+crc config set memory 14500 # in MB. You can also use 20000 for 20GB, to be safer.
 ----
 
 Now you can go ahead and start the cluster. The first time you will need to provide the pull secret you were presented
-with in the OpenShift local download page — if you didn't grab it you can come back and copy it. Run the following
+with in the OpenShift Local download page — if you didn't grab it you can come back and copy it. Run the following
 command to start the cluster:
 
 [source,bash]
@@ -75,53 +75,16 @@ command to start the cluster:
 crc start
 ----
 
-While your local OpenShift cluster boots, you can go ahead and prepare the Quay repositories and the local ones to be
-able to run the tests.
+While your local OpenShift cluster boots, you can go ahead and prepare the Quay repositories to be able to run the
+tests.
 
-=== Prepare the projects
+=== Final configurations
 ==== Creating the Quay repositories and making them public
 
-The end-to-end local tests build and push images to the Quay registry, so in order to avoid having issues with your
-local OpenShift cluster being unable to pull them from a non-public repository, you need to create those repositories
-and make them "public". Follow the following steps for that:
+Please follow the steps in the xref:quay.adoc["Configure your Quay account for dev deployment"] document to set up the
+Quay repositories, and then come back to this guide.
 
-1. Log in to https://quay.io.
-2. Go to the repository section, or click on the following link: https://quay.io/repository.
-3. Click on the "Create new repository" button.
-4. Select your personal namespace if it is not already selected for you, give the repository an appropriate name, and
-choose "Public" as the repository's visibility.
-5. Click on "Create".
-
-The repositories that you need to create and mark public need to be named as follows:
-
-* `host-operator-bundle`
-* `host-operator-index`
-* `host-operator`
-* `member-operator-bundle`
-* `member-operator-index`
-* `member-operator-webhook`
-* `member-operator`
-* `registration-service`
-
-==== Cloning the operator repositories
-
-In order to run the tests, you need to clone the repositories listed below *at the same directory level* as the
-`toolchain-e2e` repository, which should result in a directory structure like this:
-
-[source,text]
-----
-.
-├── host-operator
-├── member-operator
-├── registration-service
-└── toolchain-e2e
-----
-
-* https://github.com/codeready-toolchain/host-operator[host-operator]
-* https://github.com/codeready-toolchain/member-operator[member-operator]
-* https://github.com/codeready-toolchain/registration-service[registration-service]
-
-=== Final steps and running the tests
+==== Logging in to your cluster and Quay
 
 After some time has passed, the local OpenShift cluster might be ready to work with. The terminal should show an output
 similar to the following one:
@@ -236,20 +199,10 @@ Also, make sure you're logged in to Quay with Podman:
 podman login quay.io
 ----
 
-Finally, run the tests with the following command while you're on the `toolchain-e2e` repository:
+==== Running the tests
 
-[source,bash]
-----
-# It is recommended to redirect the output so that it doesn't overflow your terminal's buffer, and so that you can
-# check the entirety of the output.
-#
-# Make sure to export the variable with your Quay username, so the tests can use your Quay repository instead of the
-# team's ones. In case it doesn't work, you can always add "QUAY_NAMESPACE=${YOUR_USERNAME}" in front of the "make"
-# command.
-export QUAY_NAMESPACE=${YOUR_QUAY_USERNAME}
-
-make test-e2e-local > testoutput.txt
-----
+Please follow the steps in xref:README.adoc#_running_end_to_end_tests["README § Running End-to-End tests"] to set up
+the local operator repositories — if any — and run the tests.
 
 === Cleaning up
 
