@@ -81,6 +81,11 @@ able to run the tests.
 === Prepare the projects
 ==== Creating the Quay repositories and making them public
 
+NOTE: Instead of creating the repositories yourself, you can also run the `e2e-run` target with Make as follows, which
+will create the repositories for you: `make e2e-run`. Bear in mind, though, that the first run is very likely to fail
+because it is hard to make all these repositories public by hand while the tests are running. The second run should run
+with no issues.
+
 The end-to-end local tests build and push images to the Quay registry, so in order to avoid having issues with your
 local OpenShift cluster being unable to pull them from a non-public repository, you need to create those repositories
 and make them "public". Follow the following steps for that:
