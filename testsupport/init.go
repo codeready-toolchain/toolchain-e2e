@@ -302,9 +302,9 @@ func IsSecondMemberMode(t *testing.T) bool {
 	return secondMemberMode == "true"
 }
 
-// WaitForSandboxUI waits for the Developer Sandbox UI to be ready.
-func WaitForSandboxUI(t *testing.T) {
-	ns := os.Getenv("SANDBOX_UI_NS")
+// WaitForDevSandboxDashboard waits for the Developer Sandbox Dashboard to be ready.
+func WaitForDevSandboxDashboard(t *testing.T) {
+	ns := os.Getenv("DEVSANDBOX_DASHBOARD_NS")
 	require.NotEmpty(t, ns)
 
 	initOnce.Do(func() {
