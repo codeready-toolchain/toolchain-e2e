@@ -301,8 +301,6 @@ publish-current-bundles-for-e2e: get-and-publish-operators get-and-publish-devsa
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
 get-and-publish-operators: INSTALL_OPERATOR=false
-get-and-publish-operators: PUBLISH_UI=true
-get-and-publish-operators: DEPLOY_UI=false
 get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and-publish-member-operator
 
 .PHONY: get-publish-install-and-register-operators
