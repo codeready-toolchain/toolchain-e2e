@@ -51,7 +51,7 @@ ifeq ($(CI),true)
   ifeq ($(filter-out toolchain-e2e,$(REPO_NAME)),)
 	$(MAKE) test-ui-e2e
 	@echo "UI E2E tests successfully finished"
-	@echo "To clean the Developer Sandbox UI run 'make clean-sandbox-ui'"
+	@echo "To clean the Developer Sandbox Dashboard run 'make clean-devsandbox-dashboard'"
   endif
 endif
 
@@ -294,11 +294,15 @@ deploy-single-member-e2e-latest:
 
 .PHONY: publish-current-bundles-for-e2e
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
-publish-current-bundles-for-e2e: get-and-publish-operators
+publish-current-bundles-for-e2e: PUBLISH_UI=true
+publish-current-bundles-for-e2e: DEPLOY_UI=false
+publish-current-bundles-for-e2e: get-and-publish-operators get-and-publish-devsandbox-dashboard
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
 get-and-publish-operators: INSTALL_OPERATOR=false
+get-and-publish-operators: PUBLISH_UI=true
+get-and-publish-operators: DEPLOY_UI=false
 get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and-publish-member-operator
 
 .PHONY: get-publish-install-and-register-operators

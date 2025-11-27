@@ -1,4 +1,4 @@
-package sandboxui
+package devsandboxdashboard
 
 import (
 	"testing"
