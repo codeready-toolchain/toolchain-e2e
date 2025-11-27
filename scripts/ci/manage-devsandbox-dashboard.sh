@@ -190,7 +190,6 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     # Conditionally apply toolchainconfig changes
     if [[ "${ENVIRONMENT}" == "ui-e2e-tests" ]]; then
         echo "applying toolchainconfig changes"
-        echo "HOST_NS: ${HOST_NS}"
         oc apply -f deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml -n ${HOST_NS}
         echo "restarting registration-service to apply toolchainconfig changes"
         oc -n ${HOST_NS} rollout restart deploy/registration-service
