@@ -89,7 +89,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ github.event.pull_request.head.sha }} PULL_NUMBER=${{ github.event.pull_request.number }} AUTHOR=${{ github.event.pull_request.head.user.login }} BRANCH_NAME=${{ github.event.pull_request.head.ref }}
-      
+
       # Publish Developer Sandbox UI for comment events
       - name: Publish current Developer Sandbox UI (comment event)
         if: ${{ github.event_name == 'issue_comment' }}
