@@ -69,7 +69,7 @@ UNIT_TEST_DOCKERFILE=build/devsandbox-dashboard/Dockerfile
 .PHONY: build-devsandbox-dashboard-e2e-tests
 build-devsandbox-dashboard-e2e-tests:
 	@echo "building the $(UNIT_TEST_IMAGE_NAME) image with podman..."
-	podman build --IMAGE_PLATFORM $(IMAGE_PLATFORM) -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
+	podman build --platform $(IMAGE_PLATFORM) -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
 
 # Run Developer Sandbox Dashboard e2e tests image using podman
 .PHONY: test-devsandbox-dashboard-in-container
@@ -85,7 +85,7 @@ else
 	@echo "Skipping Developer Sandbox Dashboard publish - UI_REPO_PATH not set"
 endif
 	@echo "running the e2e tests in podman container..."
-	podman run --IMAGE_PLATFORM $(IMAGE_PLATFORM) --rm \
+	podman run --platform $(IMAGE_PLATFORM) --rm \
 	  -v $(KUBECONFIG):/root/.kube/config \
 	  -e KUBECONFIG=/root/.kube/config \
 	  -v ${PWD}:/root/toolchain-e2e \
