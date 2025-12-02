@@ -63,7 +63,7 @@ clean-devsandbox-dashboard:
 
 
 UNIT_TEST_IMAGE_NAME=devsandbox-dashboard-e2e-tests
-UNIT_TEST_DOCKERFILE=build/devsandbox-dashboard/Dockerfile
+UNIT_TEST_DOCKERFILE=build/sandbox-ui/Dockerfile
 
 # Build Developer Sandbox Dashboard e2e tests image using podman
 .PHONY: build-devsandbox-dashboard-e2e-tests
