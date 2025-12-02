@@ -76,4 +76,4 @@ RUN yum install -y \
         libX11-xcb && \
     yum clean all
 
-CMD ["make", "test-ui-e2e"]
+CMD ["make", "test-devsandbox-dashboard-e2e"]

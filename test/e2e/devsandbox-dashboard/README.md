@@ -10,14 +10,14 @@ The UI E2E tests are executed against the Developer Sandbox Dashboard running in
     - to easily manage it, you can run `nvm use 22`
 3. Ensure you have `yarn` installed
 4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your SSO_USERNAME and SSO_PASSWORD
-5. Make sure you have toolchain resources deployed on your cluster (you can run `make prepare-and-deploy-e2e`)
+5. Make sure you have toolchain resources deployed on your cluster (you can run `make prepare-and-deploy-e2e`  or if you are on apple chipset build and deploy all projects from locally with `make prepare-and-deploy-e2e-local PLATFORM=linux/arm64`)
 6. If you want to test the Developer Sandbox Dashboard from your local devsandbox-dashboard repository, it's required that you create a repository called `sandbox-rhdh-plugin` in your quay organization and make it public
 
 ## Running UI E2E Tests locally
 
-`make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+`make test-devsandbox-dashboard-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
-If you want to run and test the Developer Sandbox Dashboard from your local devsandbox-dashboard repository, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+If you want to run and test the Developer Sandbox Dashboard from your local devsandbox-dashboard repository, run `make test-devsandbox-dashboard-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 For now, the UI E2E tests are running only through the Firefox browser.
 
@@ -25,8 +25,9 @@ For now, the UI E2E tests are running only through the Firefox browser.
 
 `make test-devsandbox-dashboard-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
 
-If you want to use your local devsandbox-dashboard, please run:
-`make test-devsandbox-dashboard-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD> UI_REPO_PATH=${PWD}/../devsandbox-dashboard`
+If you want to use your local devsandbox-dashboard, please:
+1. Set the `QUAY_NAMESPACE` environment variable to your quay username: `export QUAY_NAMESPACE=<your-quay-username>`
+2. Run `make test-devsandbox-dashboard-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD> UI_REPO_PATH=${PWD}/../devsandbox-dashboard`
 
 ## Deploy Developer Sandbox Dashboard in E2E mode
 

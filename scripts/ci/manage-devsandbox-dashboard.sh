@@ -126,6 +126,10 @@ fi
 
 source scripts/ci/manage-operator.sh
 
+# Global variables for the script
+DEFAULT_SANDBOX_PLUGIN_IMAGE="quay.io/codeready-toolchain/sandbox-rhdh-plugin:latest"
+
+
 if [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=devsandbox-dashboard
     PROVIDED_REPOSITORY_PATH=${UI_REPO_PATH}
@@ -139,7 +143,7 @@ if [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != 
         push_image
     elif [[ -n "${CI}" && -z "${REPO_NAME}" ]]; then
         # Running in CI periodic job (REPO_NAME not set), use latest image
-        IMAGE_LOC="quay.io/codeready-toolchain/sandbox-rhdh-plugin:latest"
+        IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
         echo "Running in CI periodic job, using latest image: ${IMAGE_LOC}"
     elif [[ ${RUNNING_IN_CONTAINER} == "true" || -n "${CI}" ]]; then
         # Running inside container or in CI, use the already pushed image
@@ -149,7 +153,7 @@ if [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != 
     fi
 else
     echo "Running in local mode without setting the UI_REPO_PATH, using sandbox-rhdh-plugin image"
-    IMAGE_LOC="quay.io/codeready-toolchain/sandbox-rhdh-plugin:latest"
+    IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
 fi
 
 if [[ ${DEPLOY_UI} == "true" ]]; then
@@ -198,6 +202,6 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     fi
 
     # Wait for RHDH deployment to be ready
-    oc -n ${DEVSANDBOX_DASHBOARD_NS} rollout status deploy/rhdh
+    oc -n ${DEVSANDBOX_DASHBOARD_NS} rollout status deploy/rhdh --timeout 10m
     echo "Developer Sandbox Dashboard running at ${RHDH}"
 fi

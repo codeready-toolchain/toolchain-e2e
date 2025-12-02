@@ -1,5 +1,5 @@
 DEVSANDBOX_DASHBOARD_NS := devsandbox-dashboard
-PLATFORM ?= linux/amd64
+IMAGE_PLATFORM ?= linux/amd64
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
 UI_ENVIRONMENT := ui-e2e-tests
 SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
@@ -46,12 +46,12 @@ e2e-run-devsandbox-dashboard:
 
 	@echo "The Developer Sandbox Dashboard e2e tests successfully finished"
 
-.PHONY: test-ui-e2e
-test-ui-e2e:
+.PHONY: test-devsandbox-dashboard-e2e
+test-devsandbox-dashboard-e2e:
 	$(MAKE) get-and-publish-devsandbox-dashboard e2e-run-devsandbox-dashboard ENVIRONMENT=${UI_ENVIRONMENT}
 
-.PHONY: test-ui-e2e-local
-test-ui-e2e-local: 
+.PHONY: test-devsandbox-dashboard-e2e-local
+test-devsandbox-dashboard-e2e-local: 
 	$(MAKE) get-and-publish-devsandbox-dashboard e2e-run-devsandbox-dashboard UI_REPO_PATH=${PWD}/../devsandbox-dashboard ENVIRONMENT=${UI_ENVIRONMENT} PUBLISH_UI=true DEPLOY_UI=true
 
 .PHONY: clean-devsandbox-dashboard
@@ -69,7 +69,7 @@ UNIT_TEST_DOCKERFILE=build/devsandbox-dashboard/Dockerfile
 .PHONY: build-devsandbox-dashboard-e2e-tests
 build-devsandbox-dashboard-e2e-tests:
 	@echo "building the $(UNIT_TEST_IMAGE_NAME) image with podman..."
-	podman build --platform $(PLATFORM) -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
+	podman build --IMAGE_PLATFORM $(IMAGE_PLATFORM) -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
 
 # Run Developer Sandbox Dashboard e2e tests image using podman
 .PHONY: test-devsandbox-dashboard-in-container
@@ -85,7 +85,7 @@ else
 	@echo "Skipping Developer Sandbox Dashboard publish - UI_REPO_PATH not set"
 endif
 	@echo "running the e2e tests in podman container..."
-	podman run --platform $(PLATFORM) --rm \
+	podman run --IMAGE_PLATFORM $(IMAGE_PLATFORM) --rm \
 	  -v $(KUBECONFIG):/root/.kube/config \
 	  -e KUBECONFIG=/root/.kube/config \
 	  -v ${PWD}:/root/toolchain-e2e \
