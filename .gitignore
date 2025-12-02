@@ -340,7 +340,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # custom .env file for Developer Sandbox Dashboard E2E tests
-testsupport/devsandbox-dashboard/.env
+testsupport/sandbox-ui/.env
 
 # trace folder for Developer Sandbox Dashboard E2E tests
 trace/

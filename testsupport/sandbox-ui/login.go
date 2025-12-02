@@ -1,4 +1,4 @@
-package devsandboxdashboard
+package sandboxui
 
 import (
 	"log"

@@ -37,11 +37,11 @@ e2e-run-devsandbox-dashboard:
 	$(GOPATH)/bin/playwright install firefox
 
 	@echo "Running Developer Sandbox Dashboard setup e2e tests..."
-	DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} go test "./test/e2e/devsandbox-dashboard/setup" -v -timeout=10m -failfast
+	DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast
 	
 	@echo "Running Developer Sandbox Dashboard e2e tests in firefox..."
-	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/.env > testsupport/devsandbox-dashboard/.env
-	go test "./test/e2e/devsandbox-dashboard" -v -timeout=10m -failfast
+	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
+	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast
 	@oc delete usersignup $(SSO_USERNAME_READ) -n $(HOST_NS)
 
 	@echo "The Developer Sandbox Dashboard e2e tests successfully finished"

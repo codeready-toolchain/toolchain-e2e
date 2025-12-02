@@ -100,7 +100,7 @@ configure_oauth_idp() {
         --from-literal=clientSecret=dummy \
         --namespace=openshift-config
     
-    OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/oauth-idp-patch.yaml | \
+    OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/sandbox-ui/ui-e2e-tests/oauth-idp-patch.yaml | \
         oc patch oauths.config.openshift.io/cluster --type=merge --patch-file=/dev/stdin
 }
 
@@ -181,7 +181,7 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     create_namespace
 
     # Apply kustomize with envsubst
-    oc kustomize deploy/devsandbox-dashboard/ui-e2e-tests | \
+    oc kustomize deploy/sandbox-ui/ui-e2e-tests | \
         REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
         HOST_OPERATOR_API=${HOST_OPERATOR_API} \
         DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} \
