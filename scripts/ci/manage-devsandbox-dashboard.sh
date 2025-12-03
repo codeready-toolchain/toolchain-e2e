@@ -9,6 +9,9 @@ user_help () {
     echo "-du, --deploy-ui          Deploys the UI to the OpenShift cluster"
     echo "-ds, --date-suffix        Date suffix to be added to some resources that are created"
     echo "-ft, --forced-tag         Forces a tag to be set to all built images. In the case deployment the tag is used for index image in the created CatalogSource"
+    echo "-ns, --namespace          Namespace to deploy the Developer Sandbox Dashboard (default: devsandbox-dashboard)"
+    echo "-os, --openid-secret      OpenID secret name (default: openid-sandbox-public-client-secret)"
+    echo "-en, --environment        Environment name"
     echo "-h,  --help               To show this help text"
     echo ""
     exit 0
@@ -37,7 +40,7 @@ read_arguments() {
                     ;;
                 -ur|--ui-repo-path)
                     shift
-                    PROVIDED_RHDH_PLUGINS_PATH=$1
+                    UI_REPO_PATH=$1
                     shift
                     ;;
                 -du|--deploy-ui)
@@ -53,6 +56,21 @@ read_arguments() {
                 -ft|--forced-tag)
                     shift
                     FORCED_TAG=$1
+                    shift
+                    ;;
+                -ns|--namespace)
+                    shift
+                    DEVSANDBOX_DASHBOARD_NS=$1
+                    shift
+                    ;;
+                -os|--openid-secret)
+                    shift
+                    OPENID_SECRET_NAME=$1
+                    shift
+                    ;;
+                -en|--environment)
+                    shift
+                    ENVIRONMENT=$1
                     shift
                     ;;
                 *)
@@ -98,7 +116,8 @@ configure_oauth_idp() {
     
     oc create secret generic ${OPENID_SECRET_NAME} \
         --from-literal=clientSecret=dummy \
-        --namespace=openshift-config
+        --namespace=openshift-config \
+        --dry-run=client -o yaml | oc apply -f -
     
     OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/sandbox-ui/ui-e2e-tests/oauth-idp-patch.yaml | \
         oc patch oauths.config.openshift.io/cluster --type=merge --patch-file=/dev/stdin
@@ -116,7 +135,7 @@ create_namespace() {
 
 set -e
 
-read_arguments $@
+read_arguments "$@"
 
 if [[ -n "${CI}" ]]; then
     set -ex
@@ -136,6 +155,8 @@ if [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != 
     get_repo
     set_tags
 
+    IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}
+
     if [[ ${PUBLISH_UI} == "true" ]]; then
         echo "Going to push Developer Sandbox Dashboard image..."
         # workaround since our image is still named sandbox-rhdh-plugin
@@ -145,11 +166,6 @@ if [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != 
         # Running in CI periodic job (REPO_NAME not set), use latest image
         IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
         echo "Running in CI periodic job, using latest image: ${IMAGE_LOC}"
-    elif [[ ${RUNNING_IN_CONTAINER} == "true" || -n "${CI}" ]]; then
-        # Running inside container or in CI, use the already pushed image
-        # workaround since our image is still named sandbox-rhdh-plugin
-        IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}
-        echo "Running in container, using existing image: ${IMAGE_LOC}"
     fi
 else
     echo "Running in local mode without setting the UI_REPO_PATH, using sandbox-rhdh-plugin image"
@@ -171,24 +187,27 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
 
     echo "Developer Sandbox Dashboard will be deployed in '${DEVSANDBOX_DASHBOARD_NS}' namespace"
 
-    SSO_USERNAME_READ=$(if [ -n "${CI}" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
-    SSO_PASSWORD_READ=$(if [ -n "${CI}" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
+    SSO_USERNAME_READ=$(if [[ -n "${CI}" ]]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
+    SSO_PASSWORD_READ=$(if [[ -n "${CI}" ]]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
 
-    # Call check-sso-credentials (you'll need to implement this function or call the make target)
+    # Call check-sso-credentials
     check_sso_credentials
 
-    # Create namespace (implement or call make target)
+    # Create namespace
     create_namespace
 
     # Apply kustomize with envsubst
-    oc kustomize deploy/sandbox-ui/ui-e2e-tests | \
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+    oc kustomize ${REPO_ROOT}/deploy/sandbox-ui/${ENVIRONMENT} | \
         REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
         HOST_OPERATOR_API=${HOST_OPERATOR_API} \
         DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} \
         SANDBOX_PLUGIN_IMAGE=${IMAGE_LOC} \
         RHDH=${RHDH} envsubst | oc apply -f -
 
-    # Configure OAuth IDP (implement or call make target)
+    # Configure OAuth IDP
     configure_oauth_idp
 
     # Conditionally apply toolchainconfig changes
@@ -202,6 +221,6 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     fi
 
     # Wait for RHDH deployment to be ready
-    oc -n ${DEVSANDBOX_DASHBOARD_NS} rollout status deploy/rhdh --timeout 10m
+    oc -n ${DEVSANDBOX_DASHBOARD_NS} rollout status deploy/rhdh --timeout 5m
     echo "Developer Sandbox Dashboard running at ${RHDH}"
 fi
