@@ -9,8 +9,8 @@ user_help () {
     echo "-du, --deploy-ui          Deploys the UI to the OpenShift cluster"
     echo "-ds, --date-suffix        Date suffix to be added to some resources that are created"
     echo "-ft, --forced-tag         Forces a tag to be set to all built images. In the case deployment the tag is used for index image in the created CatalogSource"
-    echo "-ns, --namespace          Namespace to deploy the Developer Sandbox Dashboard (default: devsandbox-dashboard)"
-    echo "-os, --openid-secret      OpenID secret name (default: openid-sandbox-public-client-secret)"
+    echo "-ns, --namespace          Namespace to deploy the Developer Sandbox Dashboard"
+    echo "-os, --openid-secret      OpenID secret name"
     echo "-en, --environment        Environment name"
     echo "-h,  --help               To show this help text"
     echo ""
@@ -24,7 +24,8 @@ read_arguments() {
     fi
 
     while [[ $# -gt 0 ]]; do
-           case "$1" in
+        local arg="$1"
+        case "$arg" in
                 -h|--help)
                     user_help
                     ;;
