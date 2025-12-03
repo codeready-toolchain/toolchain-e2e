@@ -23,7 +23,7 @@ read_arguments() {
         user_help
     fi
 
-    while test $# -gt 0; do
+    while [[ $# -gt 0 ]]; do
            case "$1" in
                 -h|--help)
                     user_help
