@@ -1,5 +1,6 @@
 DEVSANDBOX_DASHBOARD_NS := devsandbox-dashboard
 IMAGE_PLATFORM ?= linux/amd64
+KUBECONFIG ?= $(HOME)/.kube/config
 OPENID_SECRET_NAME := openid-sandbox-public-client-secret
 UI_ENVIRONMENT := ui-e2e-tests
 SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
