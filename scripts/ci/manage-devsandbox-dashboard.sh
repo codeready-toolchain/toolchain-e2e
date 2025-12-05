@@ -163,10 +163,6 @@ if [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != 
         # workaround since our image is still named sandbox-rhdh-plugin
         REPOSITORY_NAME=sandbox-rhdh-plugin
         push_image
-    elif [[ -n "${CI}" && -z "${REPO_NAME}" ]]; then
-        # Running in CI periodic job (REPO_NAME not set), use latest image
-        IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
-        echo "Running in CI periodic job, using latest image: ${IMAGE_LOC}"
     fi
 else
     echo "Running in local mode without setting the UI_REPO_PATH, using sandbox-rhdh-plugin image"

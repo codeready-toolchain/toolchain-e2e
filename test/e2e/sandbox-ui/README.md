@@ -9,7 +9,7 @@ The UI E2E tests are executed against the Developer Sandbox Dashboard running in
 2. Ensure you are using Node.js version 22
     - to easily manage it, you can run `nvm use 22`
 3. Ensure you have `yarn` installed
-4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your SSO_USERNAME and SSO_PASSWORD
+4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your `SSO_USERNAME` and `SSO_PASSWORD`. You can contact the [Developer Sandbox team](devsandbox@redhat.com) to obtain the test user credentials.
 5. Make sure you have toolchain resources deployed on your cluster (you can run `make prepare-and-deploy-e2e`  or if you are on apple chipset build and deploy all projects from locally with `make prepare-and-deploy-e2e-local PLATFORM=linux/arm64`)
 6. If you want to test the Developer Sandbox Dashboard from your local devsandbox-dashboard repository, it's required that you create a repository called `sandbox-rhdh-plugin` in your quay organization and make it public
 
