@@ -20,7 +20,7 @@ ifneq (${FORCED_TAG},)
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
 endif
 	@echo "Publishing and installing the Developer Sandbox Dashboard"
-	scripts/ci/manage-devsandbox-dashboard.sh -pp ${PUBLISH_UI} ${UI_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${FORCED_TAG_PARAM} -du ${DEPLOY_UI} -ns ${DEVSANDBOX_DASHBOARD_NS} -os ${OPENID_SECRET_NAME} -en ${UI_ENVIRONMENT}
+	scripts/ci/manage-devsandbox-dashboard.sh -pp ${PUBLISH_UI} ${UI_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${FORCED_TAG_PARAM} -du ${DEPLOY_UI} -ns ${DEVSANDBOX_DASHBOARD_NS} -os ${OPENID_SECRET_NAME} -en ${UI_ENVIRONMENT} -dl ${DEPLOY_LATEST}
 
 .PHONY: e2e-run-devsandbox-dashboard
 e2e-run-devsandbox-dashboard: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
