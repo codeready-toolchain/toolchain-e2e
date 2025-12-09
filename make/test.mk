@@ -42,7 +42,7 @@ TESTS_RUN_FILTER_REGEXP ?= ""
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: 
-	$(MAKE) prepare-e2e verify-migration-and-deploy-e2e INSTALL_OPERATOR=true
+	$(MAKE) prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics INSTALL_OPERATOR=true
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 ifeq ($(CI),true)

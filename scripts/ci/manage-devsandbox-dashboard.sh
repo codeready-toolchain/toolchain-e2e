@@ -181,6 +181,7 @@ fi
 
 if [[ ${DEPLOY_UI} == "true" ]]; then
 
+    # if IMAGE_LOC is not set, it means that PUBLISH_UI is set to false (so we need to use a image already pushed)
     if [[ -z "${IMAGE_LOC}" ]]; then
         if is_provided_or_paired; then
             IMAGE_LOC="quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}"
