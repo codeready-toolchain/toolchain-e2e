@@ -168,6 +168,7 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
             echo "Going to push Developer Sandbox Dashboard image..."
             IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
             make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+            IMAGE_LOC="quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}"
         else
             echo "No provided or paired repository path, no need to push..."
             IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
@@ -175,19 +176,17 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
     fi
 else
     echo "Running in local mode without setting the UI_REPO_PATH, using sandbox-rhdh-plugin image"
-    INDEX_IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
+    IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
 fi
 
 if [[ ${DEPLOY_UI} == "true" ]]; then
 
-    if [[ -z "${INDEX_IMAGE_LOC}" ]]; then
-        if is_provided_or_paired; then
-            IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}
+    if [[ -z "${IMAGE_LOC}" ]]; then
+        if is_provided_or_paired && [[ "${PUBLISH_UI}" == "true" ]]; then
+            IMAGE_LOC="quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}"
         else
             IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
         fi
-    else
-        IMAGE_LOC=${INDEX_IMAGE_LOC}
     fi
 
     # Get the HOST_NS (host operator namespace)
