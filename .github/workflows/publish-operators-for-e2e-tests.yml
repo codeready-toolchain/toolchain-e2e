@@ -73,6 +73,7 @@ jobs:
       uses: codeready-toolchain/toolchain-cicd/prepare-tools-action@master
 
     # Execute composite action using values from PR event
+    # Developer Sandbox Dashboard will be published too in this action
     - name: Publish current operator bundles for host & member based on PR event
       uses: codeready-toolchain/toolchain-cicd/publish-operators-for-e2e-tests@master
       if: ${{ github.event_name == 'pull_request_target' }}
@@ -85,6 +86,7 @@ jobs:
         gh-head-ref: ${{ github.event.pull_request.head.ref }}
 
     # Execute composite action using values from PR event
+     # Developer Sandbox Dashboard will be published too in this action
     - name: Publish current operator bundles for host & member based on comment event
       uses: codeready-toolchain/toolchain-cicd/publish-operators-for-e2e-tests@master
       if: ${{ github.event_name == 'issue_comment' }}
