@@ -182,7 +182,7 @@ fi
 if [[ ${DEPLOY_UI} == "true" ]]; then
 
     if [[ -z "${IMAGE_LOC}" ]]; then
-        if is_provided_or_paired && [[ "${PUBLISH_UI}" == "true" ]]; then
+        if is_provided_or_paired; then
             IMAGE_LOC="quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}"
         else
             IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
