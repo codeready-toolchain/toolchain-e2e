@@ -151,10 +151,7 @@ source scripts/ci/manage-operator.sh
 DEFAULT_SANDBOX_PLUGIN_IMAGE="quay.io/codeready-toolchain/sandbox-rhdh-plugin:latest"
 
 
-if [[ "${DEPLOY_LATEST}" == "true" ]]; then
-    # running in CI periodic job or manually with DEPLOY_LATEST=true
-    IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
-elif [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
+if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=devsandbox-dashboard
     PROVIDED_REPOSITORY_PATH=${UI_REPO_PATH}
     get_repo
@@ -214,7 +211,7 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     # Conditionally apply toolchainconfig changes
     if [[ "${ENVIRONMENT}" == "ui-e2e-tests" ]]; then
         echo "applying toolchainconfig changes"
-        oc apply -f deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml -n ${HOST_NS}
+        oc apply -f ${REPO_ROOT}/deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml -n ${HOST_NS}
         echo "restarting registration-service to apply toolchainconfig changes"
         oc -n ${HOST_NS} rollout restart deploy/registration-service
     else
