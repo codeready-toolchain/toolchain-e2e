@@ -163,7 +163,14 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
         echo "Going to push Developer Sandbox Dashboard image..."
         # workaround since our image is still named sandbox-rhdh-plugin
         REPOSITORY_NAME=sandbox-rhdh-plugin
-        push_image
+        # push image if provided or paired, otherwise use default image
+        if is_provided_or_paired; then
+            IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
+            make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+            IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/${REPOSITORY_NAME}:${TAGS}
+        else
+            IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
+        fi
     fi
 else
     echo "Running in local mode without setting the UI_REPO_PATH, using sandbox-rhdh-plugin image"
