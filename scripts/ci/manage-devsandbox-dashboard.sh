@@ -157,7 +157,7 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
     get_repo
     set_tags
 
-    # workaround since our image is still named sandbox-rhdh-plugin
+    # our image is still named sandbox-rhdh-plugin
     IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}
 
     if [[ ${PUBLISH_UI} == "true" ]]; then
