@@ -1,6 +1,6 @@
-# Developer Sandbox UI E2E Tests
+# Developer Sandbox Dashboard E2E Tests
 
-The UI E2E tests are executed against the Developer Sandbox UI running in OpenShift.
+The UI E2E tests are executed against the Developer Sandbox Dashboard running in OpenShift.
 
 *Prerequisites*:
 
@@ -9,45 +9,29 @@ The UI E2E tests are executed against the Developer Sandbox UI running in OpenSh
 2. Ensure you are using Node.js version 22
     - to easily manage it, you can run `nvm use 22`
 3. Ensure you have `yarn` installed
-4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your SSO_USERNAME and SSO_PASSWORD
-5. Make sure you have toolchain resources deployed on your cluster (you can run `make prepare-and-deploy-e2e`)
+4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your `SSO_USERNAME` and `SSO_PASSWORD`. You can contact the [Developer Sandbox team](devsandbox@redhat.com) to obtain the test user credentials.
+5. Make sure you have toolchain resources deployed on your cluster (you can run `make prepare-and-deploy-e2e`  or if you are on apple chipset build and deploy all projects from locally with `make prepare-and-deploy-e2e-local PLATFORM=linux/arm64`)
+6. If you want to test the Developer Sandbox Dashboard from your local devsandbox-dashboard repository, it's required that you create a repository called `sandbox-rhdh-plugin` in your quay organization and make it public
 
-### Running UI E2E Tests locally
+## Running UI E2E Tests locally
 
-`make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} PUSH_SANDBOX_IMAGE=true`
+`make test-devsandbox-dashboard-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
-If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+If you want to run and test the Developer Sandbox Dashboard from your local devsandbox-dashboard repository, run `make test-devsandbox-dashboard-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 For now, the UI E2E tests are running only through the Firefox browser.
 
-### Running UI E2E Tests in Container
+## Running UI E2E Tests in Container
 
-`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD> HOST_NS=<HOST_NS>`
+`make test-devsandbox-dashboard-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
 
-### Running UI E2E Tests against dev/stage/prod
+If you want to use your local devsandbox-dashboard, please:
+1. Set the `QUAY_NAMESPACE` environment variable to your quay username: `export QUAY_NAMESPACE=<your-quay-username>`
+2. Run `make test-devsandbox-dashboard-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD> UI_REPO_PATH=${PWD}/../devsandbox-dashboard`
 
-If you want to run the UI E2E tests against dev/stage/prod, please follow the next steps:
+## Deploy Developer Sandbox Dashboard in E2E mode
 
-- have a new Red Hat account or an account that was deactivated
-- fill `testsupport/sandbox-ui/.env`, note that to run the UI E2E tests against dev/stage/prod, you need to set the ENVIRONMENT to dev.
-
-```
-SSO_USERNAME=<your-username>
-SSO_PASSWORD=<your-password>
-BASE_URL=https://sandbox.redhat.com/
-ENVIRONMENT=dev
-BROWSER=firefox
-```
-
-- run `go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast -count=1`
-
-`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
-
-### Deploy Developer Sandbox UI in E2E mode
-
-`make deploy-sandbox-ui HOST_NS=<HOST_NS>`
-
-Please note that OCP cluster does not have a valid CA, so when accessing the Developer Sandbox UI, you need to:
+Please note that OCP cluster does not have a valid CA, so when accessing the Developer Sandbox Dashboard, you need to:
 
 - accept to proceed unsafely
 
@@ -57,7 +41,7 @@ Please note that OCP cluster does not have a valid CA, so when accessing the Dev
 
 ![registration-service](https://github.com/user-attachments/assets/6c2f7446-1de2-4701-ace7-2d6796f49eeb)
 
-### Clean Developer Sandbox UI
+## Clean Developer Sandbox Dashboard
 
-`make clean-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME>`
+`make clean-devsandbox-dashboard SSO_USERNAME=<SSO_USERNAME>`
 
