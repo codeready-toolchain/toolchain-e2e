@@ -75,6 +75,11 @@ read_arguments() {
                     ENVIRONMENT=$1
                     shift
                     ;;
+                -dl|--deploy-latest)
+                    shift
+                    DEPLOY_LATEST=$1
+                    shift
+                    ;;
                 *)
                    echo "$1 is not a recognized flag!" >> /dev/stderr
                    user_help
