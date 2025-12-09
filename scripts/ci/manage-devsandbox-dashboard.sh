@@ -161,12 +161,13 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
     IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}
 
     if [[ ${PUBLISH_UI} == "true" ]]; then
-        echo "Going to push Developer Sandbox Dashboard image..."
         # push image if provided or paired, otherwise use default image
         if is_provided_or_paired; then
+            echo "Going to push Developer Sandbox Dashboard image..."
             IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
             make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
         else
+            echo "No provided or paired repository path, using default image..."
             IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
         fi
     fi
