@@ -75,6 +75,11 @@ read_arguments() {
                     ENVIRONMENT=$1
                     shift
                     ;;
+                -dl|--deploy-latest)
+                    shift
+                    DEPLOY_LATEST=$1
+                    shift
+                    ;;
                 *)
                    echo "$1 is not a recognized flag!" >> /dev/stderr
                    user_help
@@ -148,8 +153,7 @@ fi
 source scripts/ci/manage-operator.sh
 
 # Global variables for the script
-DEFAULT_SANDBOX_PLUGIN_IMAGE="quay.io/codeready-toolchain/sandbox-rhdh-plugin:latest"
-
+IMAGE_LOC="quay.io/codeready-toolchain/sandbox-rhdh-plugin:latest"
 
 if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=devsandbox-dashboard
@@ -157,17 +161,15 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
     get_repo
     set_tags
 
-    IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}
-
-    if [[ ${PUBLISH_UI} == "true" ]]; then
-        echo "Going to push Developer Sandbox Dashboard image..."
-        # workaround since our image is still named sandbox-rhdh-plugin
-        REPOSITORY_NAME=sandbox-rhdh-plugin
-        push_image
+    if is_provided_or_paired; then
+        IMAGE_LOC="quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}"
+        if [[ ${PUBLISH_UI} == "true" ]]; then
+            # push image if provided or paired, otherwise use default image
+            echo "Going to push Developer Sandbox Dashboard image..."
+            IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
+            make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+        fi
     fi
-else
-    echo "Running in local mode without setting the UI_REPO_PATH, using sandbox-rhdh-plugin image"
-    IMAGE_LOC="${DEFAULT_SANDBOX_PLUGIN_IMAGE}"
 fi
 
 if [[ ${DEPLOY_UI} == "true" ]]; then
