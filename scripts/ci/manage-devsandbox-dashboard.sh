@@ -126,7 +126,7 @@ configure_oauth_idp() {
         --namespace=openshift-config \
         --dry-run=client -o yaml | oc apply -f -
     
-    OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/sandbox-ui/ui-e2e-tests/oauth-idp-patch.yaml | \
+    OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/oauth-idp-patch.yaml | \
         oc patch oauths.config.openshift.io/cluster --type=merge --patch-file=/dev/stdin
 }
 
@@ -200,7 +200,7 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-    oc kustomize ${REPO_ROOT}/deploy/sandbox-ui/${ENVIRONMENT} | \
+    oc kustomize ${REPO_ROOT}/deploy/devsandbox-dashboard/${ENVIRONMENT} | \
         REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
         HOST_OPERATOR_API=${HOST_OPERATOR_API} \
         DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} \
