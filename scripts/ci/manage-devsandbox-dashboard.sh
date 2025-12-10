@@ -173,7 +173,6 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
 fi
 
 if [[ ${DEPLOY_UI} == "true" ]]; then
-
     # Get the HOST_NS (host operator namespace)
     HOST_NS=$(oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 
