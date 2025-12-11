@@ -8,9 +8,9 @@ SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secr
 
 
 ifneq ($(CLONEREFS_OPTIONS),)
-PUBLISH_UI := false
+PUBLISH_UI ?= false
 else
-PUBLISH_UI := true
+PUBLISH_UI ?= true
 endif
 
 DEPLOY_UI ?= true
