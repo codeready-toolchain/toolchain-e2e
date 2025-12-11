@@ -7,7 +7,12 @@ SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secr
 SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
 
 
-PUBLISH_UI ?= false
+ifneq ($(CLONEREFS_OPTIONS),)
+PUBLISH_UI := false
+else
+PUBLISH_UI := true
+endif
+
 DEPLOY_UI ?= true
 
 .PHONY: get-and-publish-devsandbox-dashboard
@@ -49,7 +54,7 @@ test-devsandbox-dashboard-e2e: get-and-publish-devsandbox-dashboard e2e-run-devs
 
 .PHONY: test-devsandbox-dashboard-e2e-local
 test-devsandbox-dashboard-e2e-local: 
-	$(MAKE) get-and-publish-devsandbox-dashboard e2e-run-devsandbox-dashboard UI_REPO_PATH=${PWD}/../devsandbox-dashboard PUBLISH_UI=true DEPLOY_UI=true
+	$(MAKE) get-and-publish-devsandbox-dashboard e2e-run-devsandbox-dashboard UI_REPO_PATH=${PWD}/../devsandbox-dashboard
 
 .PHONY: clean-devsandbox-dashboard
 clean-devsandbox-dashboard: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
