@@ -6,13 +6,13 @@ UI_ENVIRONMENT := ui-e2e-tests
 SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
 SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
 
-ifneq ($(CLONEREFS_OPTIONS),)
-PUBLISH_UI ?= false
-else
 PUBLISH_UI ?= true
+DEPLOY_UI ?= true
+
+ifneq ($(CLONEREFS_OPTIONS),)
+PUBLISH_UI = false
 endif
 
-DEPLOY_UI ?= true
 
 .PHONY: get-and-publish-devsandbox-dashboard
 get-and-publish-devsandbox-dashboard:
