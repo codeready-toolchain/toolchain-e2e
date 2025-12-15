@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/sandbox-ui"
+	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
 	"github.com/playwright-community/playwright-go"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +12,7 @@ import (
 )
 
 // TestHomepage tests the homepage layout and welcome text
-// when the user accesses the Developer Sandbox UI for the first time
+// when the user accesses the Developer Sandbox Dashboard for the first time
 func TestHomepage(t *testing.T) {
 	page := sandboxui.Setup(t, "test-homepage")
 

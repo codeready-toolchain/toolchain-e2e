@@ -2,7 +2,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: rhdh
-  namespace: ${SANDBOX_UI_NS}
+  namespace: ${DEVSANDBOX_DASHBOARD_NS}
   labels:
     app.kubernetes.io/instance: rhdh
 spec:

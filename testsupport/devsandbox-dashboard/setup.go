@@ -22,7 +22,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 		dir, err := os.Getwd()
 		require.NoError(t, err)
 
-		viper.SetConfigFile(filepath.Join(dir, "../../../testsupport/sandbox-ui/.env"))
+		viper.SetConfigFile(filepath.Join(dir, "../../../testsupport/devsandbox-dashboard/.env"))
 		err = viper.ReadInConfig()
 		require.NoError(t, err)
 		viper.AutomaticEnv()
