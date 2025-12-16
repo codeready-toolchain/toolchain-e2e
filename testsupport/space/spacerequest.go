@@ -59,12 +59,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 		EnsureMUR().
 		Execute(t)
 
-	// wait for the namespace to be provisioned since we will be creating the spacerequest into it.
-	parentSpace, err := awaitilities.Host().WaitForSpace(t, user.Space.Name,
-		wait.UntilSpaceHasTier("appstudio"),
-		wait.UntilSpaceHasConditions(wait.Provisioned()),
-		wait.UntilSpaceHasAnyProvisionedNamespaces())
-	require.NoError(t, err)
+	parentSpace := user.Space
 
 	// create the space request in the "default" namespace provisioned by the parentSpace
 	spaceRequest := NewSpaceRequest(t, append(opts, WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)))...)
