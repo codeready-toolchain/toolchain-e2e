@@ -176,6 +176,22 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     # Get the HOST_NS (host operator namespace)
     HOST_NS=$(oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 
+    # Wait for registration-service deployment and route to be ready
+    oc wait --for=condition=Available deployment/registration-service -n ${HOST_NS} --timeout=5m
+    # Wait for registration-service route to exist
+    NEXT_WAIT_TIME=0
+    while [[ -z $(oc get routes registration-service -n ${HOST_NS} -o jsonpath='{.status.ingress[0].host}' 2>/dev/null || true) ]]; do
+        if [[ ${NEXT_WAIT_TIME} -eq 60 ]]; then
+            echo ""
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Timeout waiting for registration-service route"
+            oc get routes -n ${HOST_NS}
+            exit 1
+        fi
+        echo -n "."
+        sleep 2
+        ((NEXT_WAIT_TIME++))
+    done
+
     # Get the Registration Service API URL
     REGISTRATION_SERVICE_API="https://$(oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1"
 
