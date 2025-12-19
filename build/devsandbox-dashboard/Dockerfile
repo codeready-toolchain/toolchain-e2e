@@ -8,8 +8,8 @@ ENV GOPATH=/tmp/go \
     PATH=$PATH:$GOPATH/bin \
     GIT_COMMITTER_NAME="Developer Sandbox" \
     GIT_COMMITTER_EMAIL=devsandbox@redhat.com \
-    GOLANG_VERSION=go1.23.12 \
-    GOLANG_SHA256=d3847fef834e9db11bf64e3fb34db9c04db14e068eeb064f49af747010454f90
+    GOLANG_VERSION=go1.24.11 \
+    GOLANG_SHA256=bceca00afaac856bc48b4cc33db7cd9eb383c81811379faed3bdbc80edb0af65
 
 # Install additional tools
 # gettext for envsubst
