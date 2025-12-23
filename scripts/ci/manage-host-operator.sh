@@ -96,7 +96,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
-        push_image
+        push_image "${DEBUG_MODE}"
         REG_SERV_IMAGE_LOC=${IMAGE_LOC}
         REG_REPO_PATH=${REPOSITORY_PATH}
     fi
@@ -108,7 +108,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
-        push_image
+        push_image "${DEBUG_MODE}"
         OPERATOR_IMAGE_LOC=${IMAGE_LOC}
         make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} OTHER_REPO_PATH=${REG_REPO_PATH} OTHER_REPO_IMAGE_LOC=${REG_SERV_IMAGE_LOC} IMAGE=${OPERATOR_IMAGE_LOC}
     fi

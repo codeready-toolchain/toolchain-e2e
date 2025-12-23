@@ -95,7 +95,7 @@ if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g')
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
-        push_image
+        push_image "${DEBUG_MODE}"
 
         OPERATOR_IMAGE_LOC=${IMAGE_LOC}
         make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE=${OPERATOR_IMAGE_LOC}
