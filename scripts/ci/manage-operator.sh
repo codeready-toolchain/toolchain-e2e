@@ -45,11 +45,21 @@ set_tags() {
 }
 
 push_image() {
+    # When the "${DEBUG_MODE}" argument is passed, we instruct Make to push
+    # the "debug" images with Delve on them.
+    if [[ $1 == "true" ]]; then
+      DEBUG_MODE_SUFFIX="-debug"
+    else
+      DEBUG_MODE_SUFFIX=""
+    fi
+
+    # Set a default image builder in case none has been specified.
+    IMAGE_BUILDER="${IMAGE_BUILDER:-podman}"
+
     GIT_COMMIT_ID=$(git --git-dir=${REPOSITORY_PATH}/.git --work-tree=${REPOSITORY_PATH} rev-parse --short HEAD)
     IMAGE_LOC=quay.io/codeready-toolchain/${REPOSITORY_NAME}:${GIT_COMMIT_ID}
     if is_provided_or_paired; then
-        IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
-        make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+        make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push${DEBUG_MODE_SUFFIX} QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
         IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/${REPOSITORY_NAME}:${TAGS}
     fi
 }
