@@ -46,13 +46,10 @@ test-e2e:
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 ifeq ($(CI),true)
-  # if we are running on CI, we want to run the ui e2e tests in the toolchain-e2e presubmit and periodic CI jobs
-  # if REPO_NAME is not set, it means that the e2e tests were triggered by the periodic CI job
-  ifeq ($(filter-out toolchain-e2e,$(REPO_NAME)),)
-	$(MAKE) test-ui-e2e
+  # if we are running on CI, we want to run the ui e2e tests
+	$(MAKE) test-devsandbox-dashboard-e2e
 	@echo "UI E2E tests successfully finished"
-	@echo "To clean the Developer Sandbox UI run 'make clean-sandbox-ui'"
-  endif
+	@echo "To clean the Developer Sandbox Dashboard run 'make clean-devsandbox-dashboard'"
 endif
 
 .PHONY: test-e2e-without-migration
@@ -294,7 +291,9 @@ deploy-single-member-e2e-latest:
 
 .PHONY: publish-current-bundles-for-e2e
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
-publish-current-bundles-for-e2e: get-and-publish-operators
+publish-current-bundles-for-e2e: PUBLISH_UI=true
+publish-current-bundles-for-e2e: DEPLOY_UI=false
+publish-current-bundles-for-e2e: get-and-publish-operators get-and-publish-devsandbox-dashboard
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true

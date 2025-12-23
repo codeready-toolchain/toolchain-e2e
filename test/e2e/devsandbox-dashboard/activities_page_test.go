@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/sandbox-ui"
+	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
 	"github.com/playwright-community/playwright-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

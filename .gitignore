@@ -339,10 +339,10 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# custom .env file for Developer Sandbox UI E2E tests
-testsupport/sandbox-ui/.env
+# custom .env file for Developer Sandbox Dashboard E2E tests
+testsupport/devsandbox-dashboard/.env
 
-# trace folder for Developer Sandbox UI E2E tests
+# trace folder for Developer Sandbox Dashboard E2E tests
 trace/
 
 # End of https://www.gitignore.io/api/go,vim,git,macos,linux,emacs,windows,eclipse,intellij+all,visualstudiocode
