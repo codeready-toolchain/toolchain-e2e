@@ -11,6 +11,7 @@ user_help () {
     echo "-rr, --reg-repo-path     Path to the registation service repo"
     echo "-ds, --date-suffix       Date suffix to be added to some resources that are created"
     echo "-ft, --forced-tag        Forces a tag to be set to all built images. In the case deployment the tag is used for index image in the created CatalogSource"
+    echo "-dm, --debug-mode        Enables debug builds. The operator is built and pushed to quay with the Delve executable included in the image"
     echo "-h,  --help              To show this help text"
     echo ""
     exit 0
@@ -68,6 +69,10 @@ read_arguments() {
                     FORCED_TAG=$1
                     shift
                     ;;
+                -dm|--debug-mode)
+                    DEBUG_MODE=true
+                    shift
+                    ;;
                 *)
                    echo "$1 is not a recognized flag!" >> /dev/stderr
                    user_help
@@ -96,7 +101,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
-        push_image
+        push_image "${DEBUG_MODE}"
         REG_SERV_IMAGE_LOC=${IMAGE_LOC}
         REG_REPO_PATH=${REPOSITORY_PATH}
     fi
@@ -108,7 +113,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
-        push_image
+        push_image "${DEBUG_MODE}"
         OPERATOR_IMAGE_LOC=${IMAGE_LOC}
         make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} OTHER_REPO_PATH=${REG_REPO_PATH} OTHER_REPO_IMAGE_LOC=${REG_SERV_IMAGE_LOC} IMAGE=${OPERATOR_IMAGE_LOC}
     fi

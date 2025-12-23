@@ -39,6 +39,45 @@ setup-dev-sso:
 .PHONY: dev-deploy-e2e-local
 dev-deploy-e2e-local: deploy-e2e-local-to-dev-namespaces print-reg-service-link
 
+# Builds the services' and operators' images with the debugger in it, so that
+# then an IDE can be connected to them. Since the targets down the line use
+# the default namespaces, we can use them to patch the required CRs in order
+# to launch the binaries with Delve.
+.ONESHELL:
+.PHONY: dev-deploy-e2e-local-debug
+dev-deploy-e2e-local-debug: export DEBUG_MODE=true
+dev-deploy-e2e-local-debug:
+	$(MAKE) dev-deploy-e2e-local
+
+	# Get the CSVs for the host and member operators, in order to be able to
+	# patch them.
+	HOST_CSV_NAME=$$(oc get --namespace="${DEFAULT_HOST_NS}" --output name ClusterServiceVersion)
+	MEMBER_CSV_NAME=$$(oc get --namespace="${DEFAULT_MEMBER_NS}" --output name ClusterServiceVersion)
+
+	# Patch the host operator indicating which command the registration
+	# service should be run with. The command simply adds an environment
+	# variable to the operator which then makes sure that the registration
+	# service is run with Delve, in case the user wants to connect to it.
+	if ! oc get "$${HOST_CSV_NAME}" --output jsonpath="{.spec.install.spec.deployments[0].spec.template.spec.containers[1].env}" | grep -q "REGISTRATION_SERVICE_COMMAND"; then \
+		oc patch --namespace="${DEFAULT_HOST_NS}" "$${HOST_CSV_NAME}" --type='json' --patch='[{"op": "add", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/1/env/-", "value": {"name": "REGISTRATION_SERVICE_COMMAND", "value": "[\"dlv\", \"--listen=:50000\", \"--headless\", \"--continue\", \"--api-version=2\", \"--accept-multiclient\", \"exec\", \"/usr/local/bin/registration-service\"]"}}]'
+
+		# Wait for the registration service's command to have the "dlv" bit, and the rollout for its deployment to be
+		# complete.
+		@echo "Waiting for the registration service's deployment to get updated..."
+		oc wait --namespace="${DEFAULT_HOST_NS}" --timeout=3m --for=jsonpath='{.spec.template.spec.containers[0].command[0]}'="dlv" "deployment/registration-service"
+		oc rollout status --namespace="${DEFAULT_HOST_NS}" --timeout=3m deployment/registration-service
+	fi
+
+	# Patch the host-operator and member-operator CSVs to make them run with
+	# Delve.
+	oc patch --namespace="${DEFAULT_HOST_NS}" "$${HOST_CSV_NAME}" --type='json' --patch='[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/1/args", "value": []}, {"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/1/command", "value": ["dlv", "--listen=:50000", "--headless", "--continue", "--api-version=2", "--accept-multiclient", "exec", "/usr/local/bin/host-operator", "--", "--health-probe-bind-address=:8081", "--metrics-bind-address=127.0.0.1:8080", "--leader-elect"]}]'
+	@echo "Waiting for the host operator to be ready..."
+	oc wait --namespace "${DEFAULT_HOST_NS}" "$${HOST_CSV_NAME}" --for=jsonpath='{.status.phase}'=Succeeded --timeout=300s
+
+	oc patch --namespace="${DEFAULT_MEMBER_NS}" "$${MEMBER_CSV_NAME}" --type='json' --patch='[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/args", "value": []}, {"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/command", "value": ["dlv", "--listen=:50000", "--headless", "--continue", "--api-version=2", "--accept-multiclient", "exec", "/usr/local/bin/member-operator", "--", "--health-probe-bind-address=:8081", "--metrics-bind-address=127.0.0.1:8080", "--leader-elect"]}]'
+	@echo "Waiting for the member operator to be ready..."
+	oc wait --namespace "${DEFAULT_MEMBER_NS}" "$${MEMBER_CSV_NAME}" --for=jsonpath='{.status.phase}'=Succeeded --timeout=300s
+
 .PHONY: dev-deploy-e2e-local-two-members
 dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members print-reg-service-link
 
