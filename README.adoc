@@ -13,7 +13,7 @@ This repository uses https://github.com/golang/go/wiki/Modules[Go modules].
 
 == Step by step guide - running in CodeReady Containers
 
-Refer to link:CRC.adoc[this guide] for detailed instructions on running the e2e tests in a local CodeReady Containers cluster.
+Refer to link:openshift_local.adoc[this guide] for detailed instructions on running the e2e tests in a local CodeReady Containers cluster.
 
 == End-to-End Tests
 
