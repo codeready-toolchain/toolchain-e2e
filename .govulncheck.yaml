@@ -41,3 +41,15 @@ ignored-vulnerabilities:
   - id: GO-2025-4007
     info: https://pkg.go.dev/vuln/GO-2025-4007
     silence-until: 2026-02-05
+  # Excessive resource consumption when printing error string for host certificate validation in crypto/x509
+  # Found in: crypto/x509@go1.23.12
+  # Fixed in: crypto/x509@go1.24.11
+  - id: GO-2025-4155
+    info: https://pkg.go.dev/vuln/GO-2025-4155
+    silence-until: 2026-02-04
+  # Improper application of excluded DNS name constraints when verifying wildcard names in crypto/x509
+  # Found in: crypto/x509@go1.23.12
+  # Fixed in: crypto/x509@go1.24.11
+  - id: GO-2025-4175
+    info: https://pkg.go.dev/vuln/GO-2025-4175
+    silence-until: 2026-02-04
