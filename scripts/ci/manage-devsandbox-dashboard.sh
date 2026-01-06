@@ -176,8 +176,22 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     # Get the HOST_NS (host operator namespace)
     HOST_NS=$(oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 
-    # Wait for registration-service deployment and route to be ready
-    oc wait --for=condition=Available deployment/registration-service -n ${HOST_NS} --timeout=10m
+    # Wait for registration-service deployment to be created
+    TIMEOUT=150  # 5 minutes in 2-second intervals
+    COUNTER=0
+    while ! oc get deployment/registration-service -n ${HOST_NS} &>/dev/null; do
+        if [[ $COUNTER -ge $TIMEOUT ]]; then
+            echo "ERROR: registration-service was not created after 5m"
+            echo "Available deployments in ${HOST_NS}:"
+            oc get deployments -n ${HOST_NS}
+            exit 1
+        fi
+        echo -n "."
+        sleep 2
+        ((COUNTER++))
+    done
+    # Wait for registration-service deployment to be available
+    oc wait --for=condition=Available deployment/registration-service -n ${HOST_NS} --timeout=2m
     # Wait for registration-service route to exist
     NEXT_WAIT_TIME=0
     while [[ -z $(oc get routes registration-service -n ${HOST_NS} -o jsonpath='{.status.ingress[0].host}' 2>/dev/null || true) ]]; do
