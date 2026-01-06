@@ -1,6 +1,7 @@
 package sandboxui
 
 import (
+	"strings"
 	"testing"
 
 	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
@@ -37,6 +38,8 @@ func TestHeader(t *testing.T) {
 
 	h1Text, err = salesPage.Locator("h1").TextContent()
 	require.NoError(t, err)
+	// replace non-breaking space with regular space
+	h1Text = strings.ReplaceAll(h1Text, "\u00a0", " ")
 	require.Contains(t, h1Text, "Contact Red Hat")
 
 	require.NoError(t, salesPage.Close())
