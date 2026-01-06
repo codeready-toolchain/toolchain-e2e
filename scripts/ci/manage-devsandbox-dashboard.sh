@@ -188,10 +188,12 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
         fi
         echo -n "."
         sleep 2
-        ((COUNTER++))
+        ((++COUNTER))
     done
+
     # Wait for registration-service deployment to be available
     oc wait --for=condition=Available deployment/registration-service -n ${HOST_NS} --timeout=2m
+    
     # Wait for registration-service route to exist
     NEXT_WAIT_TIME=0
     while [[ -z $(oc get routes registration-service -n ${HOST_NS} -o jsonpath='{.status.ingress[0].host}' 2>/dev/null || true) ]]; do
@@ -203,7 +205,7 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
         fi
         echo -n "."
         sleep 2
-        ((NEXT_WAIT_TIME++))
+        ((++NEXT_WAIT_TIME))
     done
 
     # Get the Registration Service API URL
