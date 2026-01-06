@@ -177,7 +177,7 @@ if [[ ${DEPLOY_UI} == "true" ]]; then
     HOST_NS=$(oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 
     # Wait for registration-service deployment and route to be ready
-    oc wait --for=condition=Available deployment/registration-service -n ${HOST_NS} --timeout=5m
+    oc wait --for=condition=Available deployment/registration-service -n ${HOST_NS} --timeout=10m
     # Wait for registration-service route to exist
     NEXT_WAIT_TIME=0
     while [[ -z $(oc get routes registration-service -n ${HOST_NS} -o jsonpath='{.status.ingress[0].host}' 2>/dev/null || true) ]]; do
