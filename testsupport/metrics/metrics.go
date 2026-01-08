@@ -13,27 +13,27 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func GetMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
-	value, err := getMetricValue(restConfig, url, family, expectedLabels, getValue)
+func GetMetricValue(restConfig *rest.Config, baseURL string, family string, expectedLabels []string) (float64, error) {
+	value, err := getMetricValue(restConfig, baseURL, family, expectedLabels, getValue)
 	if value == nil {
 		return -1, err
 	}
 	return *value, err
 }
 
-func GetHistogramBuckets(restConfig *rest.Config, url string, family string, expectedLabels []string) ([]*dto.Bucket, error) {
-	value, err := getMetricValue(restConfig, url, family, expectedLabels, getBuckets)
+func GetHistogramBuckets(restConfig *rest.Config, baseURL string, family string, expectedLabels []string) ([]*dto.Bucket, error) {
+	value, err := getMetricValue(restConfig, baseURL, family, expectedLabels, getBuckets)
 	if value == nil {
 		return nil, err
 	}
 	return *value, err
 }
 
-func getMetricValue[T any](restConfig *rest.Config, url string, family string, expectedLabels []string, getValue func(dto.MetricType, *dto.Metric) (*T, error)) (*T, error) {
+func getMetricValue[T any](restConfig *rest.Config, baseURL string, family string, expectedLabels []string, getValue func(dto.MetricType, *dto.Metric) (*T, error)) (*T, error) {
 	if len(expectedLabels)%2 != 0 {
 		return nil, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")
 	}
-	uri := fmt.Sprintf("https://%s/metrics", url)
+	uri := baseURL + "/metrics"
 	var metrics []byte
 
 	client := http.Client{
@@ -128,8 +128,8 @@ func getBuckets(t dto.MetricType, m *dto.Metric) (*[]*dto.Bucket, error) {
 }
 
 // GetMetricLabels return all labels (indexed by key) for all metrics of the given `family`
-func GetMetricLabels(restConfig *rest.Config, url string, family string) ([]map[string]string, error) {
-	uri := fmt.Sprintf("https://%s/metrics", url)
+func GetMetricLabels(restConfig *rest.Config, baseURL string, family string) ([]map[string]string, error) {
+	uri := baseURL + "/metrics"
 	var metrics []byte
 
 	client := http.Client{
