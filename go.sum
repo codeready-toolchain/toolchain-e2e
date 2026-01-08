@@ -26,10 +26,10 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/cloudflare/circl v1.1.0/go.mod h1:prBCrKB9DV4poKZY1l9zBXg2QJY7mvgRvtMxxK7fi4I=
 github.com/cloudflare/circl v1.6.1 h1:zqIqSPIndyBh1bjLVVDHMPpVKqp8Su/V+6MeDzzQBQ0=
 github.com/cloudflare/circl v1.6.1/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
-github.com/codeready-toolchain/api v0.0.0-20260108101803-54d23a1b4f3c h1:SwRrYLKaqZgkacUtCFFds5CVL+WxcWgtZvwOGC94Qeg=
-github.com/codeready-toolchain/api v0.0.0-20260108101803-54d23a1b4f3c/go.mod h1:zXOAqYKL70F9CIm357t8NAhaao9vcbl1cbOe7I/hRHo=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20260108104612-94ad63d02d50 h1:8kdg5DA49UdaVysbsA13C9KAFELC7QXoY1kfuvDC71k=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20260108104612-94ad63d02d50/go.mod h1:KmG0LgWVfwZE9r13V8LGQezcH/aS6h/rP+InHIFb7WU=
+github.com/codeready-toolchain/api v0.0.0-20260108115150-4c6695ed18de h1:rc39ZRUk2AyADzH+bt5On7V7qJz6syUrI4qNyCSXY3o=
+github.com/codeready-toolchain/api v0.0.0-20260108115150-4c6695ed18de/go.mod h1:O/HyAcz6fynt3LXr8wTGaIXt+0v6BpkiJvDxNQDCqyA=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20260108121619-9d154db88508 h1:mLYk2QmCM0VGk5P7AaKe3EEpN4kUxkQOFTdbPol6c+0=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20260108121619-9d154db88508/go.mod h1:xnME43Bdz4TF11lvPwsZWtGCybs/sS/QyE8HTe6WbiE=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -207,8 +207,8 @@ github.com/onsi/ginkgo/v2 v2.23.3 h1:edHxnszytJ4lD9D5Jjc4tiDkPBZ3siDeJJkUZJJVkp0
 github.com/onsi/ginkgo/v2 v2.23.3/go.mod h1:zXTP6xIp3U8aVuXN8ENK9IXRaTjFnpVB9mGmaSRvxnM=
 github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
 github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
-github.com/openshift/api v0.0.0-20251202204302-1cb53e34ca33 h1:/Be2oa7aOPE60B7AH0/j58BUvN0MMQjhDdN/A71TcKc=
-github.com/openshift/api v0.0.0-20251202204302-1cb53e34ca33/go.mod h1:SPLf21TYPipzCO67BURkCfK6dcIIxx0oNRVWaOyRcXM=
+github.com/openshift/api v0.0.0-20260107143020-50517c6f4bfd h1:PM4lWhDEE90mjP9dAYGWGs25mhKhjv3BrRGdqKdz8NA=
+github.com/openshift/api v0.0.0-20260107143020-50517c6f4bfd/go.mod h1:SPLf21TYPipzCO67BURkCfK6dcIIxx0oNRVWaOyRcXM=
 github.com/openshift/library-go v0.0.0-20251110200504-2685cf1242fc h1:g9BJ/p4ZLgb253FwnWvWEzl2vYSDSvvUZ6s42weVKpM=
 github.com/openshift/library-go v0.0.0-20251110200504-2685cf1242fc/go.mod h1:tptKNust9MdRI0p90DoBSPHIrBa9oh+Rok59tF0vT8c=
 github.com/operator-framework/api v0.34.0 h1:REiEaYhG1CWmDoajdcAdZqtgoljWG+ixMY59vUX5pFI=

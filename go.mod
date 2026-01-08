@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20260108101803-54d23a1b4f3c
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20260108104612-94ad63d02d50
+	github.com/codeready-toolchain/api v0.0.0-20260108115150-4c6695ed18de
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20260108121619-9d154db88508
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/fatih/color v1.18.0
 	github.com/ghodss/yaml v1.0.0
@@ -13,8 +13,8 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/manifoldco/promptui v0.9.0
-	// using latest commit from 'github.com/openshift/api branch release-4.20'
-	github.com/openshift/api v0.0.0-20251202204302-1cb53e34ca33
+	// using latest commit from 'github.com/openshift/api branch release-4.19'
+	github.com/openshift/api v0.0.0-20260107143020-50517c6f4bfd
 	github.com/operator-framework/api v0.34.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.22.0
