@@ -1557,6 +1557,22 @@ func (a *MemberAwaitility) WaitUntilInferenceServiceDeleted(t *testing.T, name, 
 	return err
 }
 
+// WaitUntilDataVolumeDeleted waits for the DataVolume resource to be deleted (idled)
+func (a *MemberAwaitility) WaitUntilDataVolumeDeleted(t *testing.T, name, namespace string, dataVolumeRes dynamic.NamespaceableResourceInterface) error {
+	t.Logf("waiting for DataVolume '%s' to be deleted in namespace '%s'", name, namespace)
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
+		_, err := dataVolumeRes.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+	return err
+}
+
 // WaitForPods waits until "n" number of pods exist in the given namespace
 func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
 	t.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)

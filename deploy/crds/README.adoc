@@ -3,8 +3,11 @@
 == appstudio CRDs
 Copy/paste relevant definitions from https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
 
-== virtualmachines CRD
+== virtualmachines & datavolumes CRD
 Copy from a cluster with CNV operator installed
 
 == ansibleautomationplatforms CRD
 Copy from a cluster with Ansible Automation Platform operator installed
+
+== serving CRDs
+Copy from a cluster with Serverless operator installed
