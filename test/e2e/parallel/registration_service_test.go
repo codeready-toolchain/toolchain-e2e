@@ -854,6 +854,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 				testsocialevent.WithUserTier("deactivate80"),
 				testsocialevent.WithSpaceTier("base1ns6didler"),
+				testsocialevent.WithMaxAttendees(0), // simulate event being already full
 				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
@@ -861,12 +862,6 @@ func TestActivationCodeVerification(t *testing.T) {
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			})) // need to reload event
-			require.NoError(t, err)
-			event, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				UpdateStatus(event.Name, hostAwait.Namespace,
-					func(ev *toolchainv1alpha1.SocialEvent) {
-						ev.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
-					})
 			require.NoError(t, err)
 
 			userSignup, token := signup(t, hostAwait)
