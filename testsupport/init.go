@@ -207,12 +207,12 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// setup host metrics route for metrics verification in tests
 		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
 		require.NoError(t, err)
-		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
+		initHostAwait.MetricsURL = "https://" + hostMetricsRoute.Status.Ingress[0].Host
 
 		// setup member metrics route for metrics verification in tests
 		memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
-		initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
+		initMemberAwait.MetricsURL = "https://" + memberMetricsRoute.Status.Ingress[0].Host
 
 		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
 		// (we can't deploy the same webhook multiple times on the same cluster)
@@ -302,9 +302,9 @@ func IsSecondMemberMode(t *testing.T) bool {
 	return secondMemberMode == "true"
 }
 
-// WaitForSandboxUI waits for the Developer Sandbox UI to be ready.
-func WaitForSandboxUI(t *testing.T) {
-	ns := os.Getenv("SANDBOX_UI_NS")
+// WaitForDevSandboxDashboard waits for the Developer Sandbox Dashboard to be ready.
+func WaitForDevSandboxDashboard(t *testing.T) {
+	ns := os.Getenv("DEVSANDBOX_DASHBOARD_NS")
 	require.NotEmpty(t, ns)
 
 	initOnce.Do(func() {

@@ -7,6 +7,6 @@ import (
 )
 
 func TestSetup(t *testing.T) {
-	// check Developer Sandbox UI is up and running
-	testsupport.WaitForSandboxUI(t)
+	// check Developer Sandbox Dashboard is up and running
+	testsupport.WaitForDevSandboxDashboard(t)
 }
