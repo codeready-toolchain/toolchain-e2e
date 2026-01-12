@@ -1,11 +1,11 @@
 == Required Pre-installed Tools
-* go 1.23.x (1.23.12 or higher)
+* go 1.24.x (1.24.11 or higher)
 * git
-* operator-sdk 1.40.0 +
+* operator-sdk 1.42.0 +
 NOTE: Follow the installation instructions https://sdk.operatorframework.io/docs/installation/#install-from-github-release[here]. Make sure that the download URL (specified by the `OPERATOR_SDK_DL_URL` environment variable) is set to the correct version.
 * sed
 * yamllint
 * jq
 * podman
-* opm v1.55.0 +
+* opm v1.59.0 +
 NOTE: To download the Operator Registry tool use either https://github.com/operator-framework/operator-registry/releases or https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/. The version should correspond with the OpenShift version you are running. To confirm that the Operator Registry tool is installed correctly: `$ opm version`

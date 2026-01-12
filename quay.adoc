@@ -1,22 +1,30 @@
 == Configure your Quay account for dev deployment
 
-There is a set of images that is built and pushed to quay repositories while deploying local versions of Toolchain (Sandbox) operators to OpenShift cluster. Please make sure that the repositories exist in your quay.io account.
+There is a set of images that are built and pushed to quay repositories while deploying local versions of Toolchain
+(Sandbox) operators to OpenShift cluster. Please make sure that the repositories exist in your Quay.io account.
 
 === Repositories
-. Register for a quay.io account if you don't have one
-. Make sure you have set the _QUAY_NAMESPACE_ variable: +
-`export QUAY_NAMESPACE=<quay-username>`
-. Log in to quay.io using +
-`podman login quay.io`
-* Make sure that these repositories exist on quay.io and the visibility is set to `public` for all of them:
- * https://quay.io/repository/<quay-username>/host-operator
- * https://quay.io/repository/<quay-username>/host-operator-bundle
- * https://quay.io/repository/<quay-username>/host-operator-index
- * https://quay.io/repository/<quay-username>/member-operator
- * https://quay.io/repository/<quay-username>/member-operator-webhook
- * https://quay.io/repository/<quay-username>/member-operator-bundle
- * https://quay.io/repository/<quay-username>/member-operator-index
- * https://quay.io/repository/<quay-username>/registration-service
+. Register for a quay.io account if you don't have one and log in to the account.
+. Go to the repository section, or click on the following link: https://quay.io/repository.
+. Click on the "Create new repository" button.
+. Select your personal namespace if it is not already selected for you, give the repository an appropriate name, and
+choose "Public" as the repository's visibility.
+. Click on "Create".
+
+Also, make sure that:
+
+. You have set the `QUAY_NAMESPACE` environment variable so that any commands or tests you run use your personal Quay
+repositories: `export QUAY_NAMESPACE=<quay-username>`
+. You are logged in to your Quay.io account in Podman too with `podman login quay.io` for the same previous reason.
+. You end up with the following *public* repositories in Quay:
+.. https://quay.io/repository/<quay-username>/host-operator
+.. https://quay.io/repository/<quay-username>/host-operator-bundle
+.. https://quay.io/repository/<quay-username>/host-operator-index
+.. https://quay.io/repository/<quay-username>/member-operator
+.. https://quay.io/repository/<quay-username>/member-operator-webhook
+.. https://quay.io/repository/<quay-username>/member-operator-bundle
+.. https://quay.io/repository/<quay-username>/member-operator-index
+.. https://quay.io/repository/<quay-username>/registration-service
  
 
 === Public visibility
