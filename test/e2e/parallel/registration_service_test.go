@@ -854,7 +854,11 @@ func TestActivationCodeVerification(t *testing.T) {
 			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 				testsocialevent.WithUserTier("deactivate80"),
 				testsocialevent.WithSpaceTier("base1ns6didler"),
-				testsocialevent.WithMaxAttendees(0), // simulate event being already full
+				// MaxAttendees is set to 0 to simulate event being already full
+				// We use this approach instead of manipulating ActivationCount to avoid flakiness
+				// if the controller reconciliation is triggered by other parallel test, the ActivationCount
+				// would be recalculated to 0 (due to the counting of approved UserSignups) and the test would fail.
+				testsocialevent.WithMaxAttendees(0),
 				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
