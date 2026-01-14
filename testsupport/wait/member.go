@@ -1588,7 +1588,9 @@ func (a *MemberAwaitility) WaitUntilPVCDeleted(t *testing.T, name, namespace str
 		}
 		return false, nil
 	})
-	t.Logf("failed waiting for PVC '%s' to be deleted in namespace '%s': %q", name, namespace, pvc)
+	if err != nil {
+		t.Logf("failed waiting for PVC '%s' to be deleted in namespace '%s': %q", name, namespace, pvc)
+	}
 	return err
 }
 
