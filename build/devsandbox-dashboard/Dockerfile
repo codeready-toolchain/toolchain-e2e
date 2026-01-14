@@ -51,8 +51,6 @@ WORKDIR /app
 # Increase shared memory for browsers (recommended for Playwright)
 RUN mkdir -p /dev/shm && chmod 1777 /dev/shm
 
-COPY . .
-
 # Install Firefox required dependencies
 RUN yum install -y \
         libxcb \
@@ -75,5 +73,7 @@ RUN yum install -y \
         fontconfig \
         libX11-xcb && \
     yum clean all
+
+COPY . .
 
 CMD ["/bin/bash"]
