@@ -854,6 +854,11 @@ func TestActivationCodeVerification(t *testing.T) {
 			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 				testsocialevent.WithUserTier("deactivate80"),
 				testsocialevent.WithSpaceTier("base1ns6didler"),
+				// MaxAttendees is set to 0 to simulate event being already full
+				// We use this approach instead of manipulating ActivationCount to avoid flakiness
+				// if the controller reconciliation is triggered by other parallel test, the ActivationCount
+				// would be recalculated to 0 (due to the counting of approved UserSignups) and the test would fail.
+				testsocialevent.WithMaxAttendees(0),
 				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
@@ -861,12 +866,6 @@ func TestActivationCodeVerification(t *testing.T) {
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			})) // need to reload event
-			require.NoError(t, err)
-			event, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				UpdateStatus(event.Name, hostAwait.Namespace,
-					func(ev *toolchainv1alpha1.SocialEvent) {
-						ev.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
-					})
 			require.NoError(t, err)
 
 			userSignup, token := signup(t, hostAwait)
