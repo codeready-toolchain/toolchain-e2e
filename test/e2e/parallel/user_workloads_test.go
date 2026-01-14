@@ -111,6 +111,10 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// Wait for the DataVolume to be deleted
 	err = memberAwait.WaitUntilDataVolumeDeleted(t, "test-idler-datavolume", idler.Name, clnt.Resource(dataVolumeRes))
 	require.NoError(t, err)
+
+	// Wait for the PVC to be deleted
+	err = memberAwait.WaitUntilDataVolumeDeleted(t, "test-idler-pvc", idler.Name, clnt.Resource(dataVolumeRes))
+	require.NoError(t, err)
 }
 
 func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*toolchainv1alpha1.Idler, *toolchainv1alpha1.Idler) {
@@ -168,6 +172,10 @@ func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 
 	// Create a DataVolume resource with manual PVC and Pod
 	createDataVolume(t, memberAwait, "test-idler-datavolume", namespace)
+	n = n + 1
+
+	// Create a PVC and Pod
+	createPvcWithPod(t, memberAwait, "test-idler-pvc", namespace, nil)
 	n = n + 1
 
 	servingRuntimeDeployment := createKServeWorkloads(t, memberAwait, "test-idler-kserve", namespace)
