@@ -113,7 +113,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the PVC to be deleted
-	err = memberAwait.WaitUntilDataVolumeDeleted(t, "test-idler-pvc", idler.Name, clnt.Resource(dataVolumeRes))
+	err = memberAwait.WaitUntilPVCDeleted(t, "test-idler-pvc", idler.Name)
 	require.NoError(t, err)
 }
 
