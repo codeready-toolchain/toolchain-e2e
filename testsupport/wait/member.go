@@ -1573,6 +1573,27 @@ func (a *MemberAwaitility) WaitUntilDataVolumeDeleted(t *testing.T, name, namesp
 	return err
 }
 
+// WaitUntilPVCDeleted waits for the PVC resource to be deleted (idled)
+func (a *MemberAwaitility) WaitUntilPVCDeleted(t *testing.T, name, namespace string) error {
+	t.Logf("waiting for PVC '%s' to be deleted in namespace '%s'", name, namespace)
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
+		pvc = &corev1.PersistentVolumeClaim{}
+		err := a.Client.Get(ctx, test.NamespacedName(namespace, name), pvc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+	if err != nil {
+		t.Logf("failed waiting for PVC '%s' to be deleted in namespace '%s': %q", name, namespace, pvc)
+	}
+	return err
+}
+
 // WaitForPods waits until "n" number of pods exist in the given namespace
 func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
 	t.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
