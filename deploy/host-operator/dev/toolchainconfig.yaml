@@ -10,6 +10,7 @@ spec:
       deactivationDomainsExcluded: '@redhat.com'
     registrationService:
       environment: 'dev'
+      replicas: 1
   members:
     default:
       autoscaler:
