@@ -32,11 +32,8 @@ endif
 e2e-run-devsandbox-dashboard: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 e2e-run-devsandbox-dashboard: RHDH=https://rhdh-${DEVSANDBOX_DASHBOARD_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
 e2e-run-devsandbox-dashboard:
-	$(eval PWGO_VER := $(shell grep -oE "playwright-go v\S+" go.mod | sed 's/playwright-go //g'))
-	@echo "Installing Playwright CLI version: $(PWGO_VER)"
-	go install github.com/playwright-community/playwright-go/cmd/playwright@$(PWGO_VER)
 	@echo "Installing Firefox browser for Playwright..."
-	$(GOPATH)/bin/playwright install firefox
+	go tool playwright install firefox
 
 	@echo "Running Developer Sandbox Dashboard setup e2e tests..."
 	DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} go test "./test/e2e/devsandbox-dashboard/setup" -v -timeout=10m -failfast

@@ -107,6 +107,14 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// the idler idles the second-top-owner when the pod is still running
 	err = memberAwait.WaitUntilInferenceServiceDeleted(t, "test-idler-kserve", idler.Name, clnt.Resource(inferenceServiceRes))
 	require.NoError(t, err)
+
+	// Wait for the DataVolume to be deleted
+	err = memberAwait.WaitUntilDataVolumeDeleted(t, "test-idler-datavolume", idler.Name, clnt.Resource(dataVolumeRes))
+	require.NoError(t, err)
+
+	// Wait for the PVC to be deleted
+	err = memberAwait.WaitUntilPVCDeleted(t, "test-idler-pvc", idler.Name)
+	require.NoError(t, err)
 }
 
 func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*toolchainv1alpha1.Idler, *toolchainv1alpha1.Idler) {
@@ -162,6 +170,14 @@ func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 	aapDeployment := createAAP(t, memberAwait, "test-idler-aap", namespace)
 	n = n + int(*aapDeployment.Spec.Replicas)
 
+	// Create a DataVolume resource with manual PVC and Pod
+	createDataVolume(t, memberAwait, "test-idler-datavolume", namespace)
+	n = n + 1
+
+	// Create a PVC and Pod
+	createPvcWithPod(t, memberAwait, "test-idler-pvc", namespace, nil)
+	n = n + 1
+
 	servingRuntimeDeployment := createKServeWorkloads(t, memberAwait, "test-idler-kserve", namespace)
 	n = n + int(*servingRuntimeDeployment.Spec.Replicas)
 
@@ -194,6 +210,7 @@ func createDeployment(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 var aapRes = schema.GroupVersionResource{Group: "aap.ansible.com", Version: "v1alpha1", Resource: "ansibleautomationplatforms"}
 var servingRuntimeRes = schema.GroupVersionResource{Group: "serving.kserve.io", Version: "v1alpha1", Resource: "servingruntimes"}
 var inferenceServiceRes = schema.GroupVersionResource{Group: "serving.kserve.io", Version: "v1beta1", Resource: "inferenceservices"}
+var dataVolumeRes = schema.GroupVersionResource{Group: "cdi.kubevirt.io", Version: "v1beta1", Resource: "datavolumes"}
 
 // createAAP creates an instance of ansibleautomationplatforms.aap.ansible.com with one deployment owned by this instance
 // returns the underlying deployment
@@ -383,6 +400,77 @@ func aapResource(name string) *unstructured.Unstructured {
 			"spec": map[string]interface{}{
 				"idle_aap": false,
 			},
+		},
+	}
+}
+
+// createDataVolume creates an instance of datavolumes.cdi.kubevirt.io with one PVC and Pod owned in chain
+func createDataVolume(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *corev1.Pod {
+	cl, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+
+	// Create a DataVolume instance
+	dataVolume := dataVolumeResource(name)
+	createdDataVolume, err := cl.Resource(dataVolumeRes).Namespace(namespace).Create(context.TODO(), dataVolume, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Manually create PVC (simulating CDI controller behavior) with DataVolume as owner
+	return createPvcWithPod(t, memberAwait, name, namespace, createdDataVolume)
+}
+
+func createPvcWithPod(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, owner client.Object) *corev1.Pod {
+	pvc := &corev1.PersistentVolumeClaim{}
+	pvc.SetName(name + "-pvc")
+	pvc.SetNamespace(namespace)
+	pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	pvc.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}
+
+	if owner != nil {
+		require.NoError(t, controllerutil.SetOwnerReference(owner, pvc, scheme.Scheme))
+	}
+	require.NoError(t, memberAwait.CreateWithCleanup(t, pvc))
+
+	// Create a Pod with PVC as owner and mount the PVC
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name + "-pod",
+			Namespace: namespace,
+			Labels:    map[string]string{"idler": "idler", "app": name},
+		},
+		Spec: podSpec(),
+	}
+	// Add volume mount to the pod
+	pod.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "data-volume",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvc.Name,
+				},
+			},
+		},
+	}
+	pod.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
+		{
+			Name:      "data-volume",
+			MountPath: "/data",
+		},
+	}
+	require.NoError(t, controllerutil.SetOwnerReference(pvc, pod, scheme.Scheme))
+	require.NoError(t, memberAwait.CreateWithCleanup(t, pod))
+
+	return pod
+}
+
+func dataVolumeResource(name string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cdi.kubevirt.io/v1beta1",
+			"kind":       "DataVolume",
+			"metadata": map[string]interface{}{
+				"name": name,
+			},
+			"spec": map[string]interface{}{},
 		},
 	}
 }
