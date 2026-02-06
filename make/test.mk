@@ -331,6 +331,11 @@ ifneq (${FORCED_TAG},"")
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
     endif
 endif
+ifneq (${DEBUG_MODE},"")
+    ifneq (${DEBUG_MODE},)
+		$(eval DEBUG_MODE_PARAM = --debug-mode)
+    endif
+endif
 ifeq ($(DEPLOY_LATEST),true)
 	@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS}"
 	${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
@@ -340,7 +345,7 @@ ifeq ($(DEPLOY_LATEST),true)
    endif
 else
 	@echo "Installing specific version of the member-operator"
-	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}
+	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM} ${DEBUG_MODE_PARAM}
 endif
 
 .PHONY: get-and-publish-host-operator
@@ -360,12 +365,17 @@ ifneq (${FORCED_TAG},"")
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
     endif
 endif
+ifneq (${DEBUG_MODE},"")
+    ifneq (${DEBUG_MODE},)
+		$(eval DEBUG_MODE_PARAM = --debug-mode)
+    endif
+endif
 ifeq ($(DEPLOY_LATEST),true)
 	@echo "Installing latest version of the host-operator"
 	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
 else
 	@echo "Installing specific version of the host-operator"
-	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}
+	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM} ${DEBUG_MODE_PARAM}
 endif
 
 ###########################################################
