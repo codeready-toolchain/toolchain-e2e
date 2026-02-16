@@ -151,6 +151,16 @@ All e2e resources (host operator, member operator, registration-service, CRDs, e
 
 * `make dev-deploy-e2e-local` - deploys the same resources as `make test-e2e-local` in dev environment but doesn't run tests.
 
+* `make dev-deploy-e2e-local-debug` - deploys the same resources as `make test-e2e-local` in the local OpenShift
+instance, but builds the services and the operators without any code optimizations. It also ships Delve in the images,
+and launches those services with it, which leaves the debugger listening on port `50000`. The default architecture for
+which the binaries are built are `linux-amd64`, but you can override it with `export TARGET_ARCH=${YOUR_ARCH}`. Then,
+you can simply `oc port-forward ${POD} 50000:50000` and connect to them with your favorite IDE. The services that are
+built like that are:
+** The registration service.
+** The host operator controller manager.
+** The member operator controller manager.
+
 * `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` in dev environment but doesn't run tests.
 
 * `make deploy-single-member-e2e-latest` - deploys the same resources (using the latest and greatest images of Toolchain operators) as `make test-e2e` but with only one member and doesn't run tests.
