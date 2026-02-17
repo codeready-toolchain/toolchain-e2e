@@ -1,5 +1,5 @@
 == Required Pre-installed Tools
-* go 1.24.x (1.24.11 or higher)
+* go 1.24.x (1.24.13 or higher)
 * git
 * operator-sdk 1.42.0 +
 NOTE: Follow the installation instructions https://sdk.operatorframework.io/docs/installation/#install-from-github-release[here]. Make sure that the download URL (specified by the `OPERATOR_SDK_DL_URL` environment variable) is set to the correct version.
