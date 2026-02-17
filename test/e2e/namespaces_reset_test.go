@@ -59,9 +59,18 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 		Execute(s.T())
 
 	// Get the user's "NSTemplateSet" and its provisioned namespaces for the
-	// later checks.
+	// later checks. We are storing the creation timestamp to make sure that
+	// it is different from the one of the freshly created namespaces.
 	_, nsTemplateSet := space.VerifyResourcesProvisionedForSpace(s.T(), s.Awaitilities, userOne.Space.Name)
 	provisionedNamespaces := nsTemplateSet.Status.ProvisionedNamespaces
+
+	namespacesCreationTimestamp := make(map[string]time.Time)
+	for _, ns := range provisionedNamespaces {
+		namespace, err := memberAwaitily.WaitForNamespaceWithName(s.T(), ns.Name)
+		require.NoError(s.T(), err, "unable to fetch namespace")
+
+		namespacesCreationTimestamp[ns.Name] = namespace.CreationTimestamp.Time
+	}
 
 	// Create a token and identity to invoke the "reset-namespace" with.
 	userIdentity := &commonauth.Identity{
@@ -97,7 +106,14 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 
 	// ... and double check that the namespaces are active.
 	for _, namespace := range nsTmplSet.Spec.Namespaces {
-		_, err := memberAwaitily.WaitForNamespace(s.T(), userOne.UserSignup.Status.CompliantUsername, namespace.TemplateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
+		fetchedNamespace, err := memberAwaitily.WaitForNamespace(s.T(), userOne.UserSignup.Status.CompliantUsername, namespace.TemplateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(s.T(), err, `unexpected error when waiting for the namespace "%s" to become active`, namespace.TemplateRef)
+
+		timestamp, ok := namespacesCreationTimestamp[fetchedNamespace.Name]
+		if !ok {
+			require.FailNow(s.T(), "mismatch in the namespace provisioning", `the recreated namespace "%s" was not part of the original provisioned namespaces' list: %#v'`, fetchedNamespace.Namespace, provisionedNamespaces)
+		}
+
+		require.NotEqual(s.T(), timestamp, fetchedNamespace.CreationTimestamp, `the namespace "%s" appears to not have been recreated due to having the same creation timestamp as before`, fetchedNamespace.Name)
 	}
 }
