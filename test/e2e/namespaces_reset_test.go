@@ -46,7 +46,11 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 	memberAwaitily := s.Member1()
 
 	// Create a new user signup for the test.
+	userUuid, err := uuid.NewUUID()
+	require.NoError(s.T(), err, "unable to generate user uuid")
+
 	userOne := testsupport.NewSignupRequest(s.Awaitilities).
+		IdentityID(userUuid).
 		Username("userone").
 		Email("userone@redhat.com").
 		ManuallyApprove().
@@ -61,17 +65,12 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 	provisionedNamespaces := nsTemplateSet.Status.ProvisionedNamespaces
 
 	// Create a token and identity to invoke the "reset-namespace" with.
-	userUuid, err := uuid.NewUUID()
-	if err != nil {
-		s.FailNow("unable to generate user UUID", err)
-	}
-
 	userIdentity := &commonauth.Identity{
 		ID:       userUuid,
 		Username: userOne.UserSignup.Status.CompliantUsername,
 	}
 	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim(userOne.UserSignup.Spec.IdentityClaims.Email)}
-	claims = append(claims, commonauth.WithUserIDClaim("111222"))
+	claims = append(claims, commonauth.WithUserIDClaim(userIdentity.ID.String()))
 	claims = append(claims, commonauth.WithAccountIDClaim("999111"))
 	claims = append(claims, commonauth.WithGivenNameClaim("John"))
 	claims = append(claims, commonauth.WithFamilyNameClaim("Doe"))
