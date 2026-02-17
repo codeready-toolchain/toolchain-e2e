@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"crypto/tls"
-	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -82,23 +81,8 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 
 	// when
 	// Call the endpoint under test.
-	req, err := http.NewRequest(http.MethodPost, s.Host().RegistrationServiceURL+"/api/v1/reset-namespaces", nil)
-	require.NoError(s.T(), err, `unable to create the "namespace reset" request`)
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := s.httpClient.Do(req)
-	require.NoError(s.T(), err, `unable to send the "namespace reset" request`)
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			require.NoError(s.T(), err, `unable to close the "namespace reset" response's' body`)
-		}
-	}()
-
-	bodyRaw, err := io.ReadAll(resp.Body)
-	require.NoError(s.T(), err, `unable to read the response body for the "namespace reset" request`)
-	require.Equal(s.T(), http.StatusAccepted, resp.StatusCode, "unexpected status code received. Response body: %s", string(bodyRaw))
+	testsupport.NewHTTPRequest(s.T()).
+		InvokeEndpoint(http.MethodPost, s.Host().RegistrationServiceURL+"/api/v1/reset-namespaces", token, "", http.StatusAccepted)
 
 	// then
 	// Wait for the user's namespaces to reach the "terminating" status.
