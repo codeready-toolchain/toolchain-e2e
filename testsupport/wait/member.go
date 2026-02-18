@@ -2657,7 +2657,7 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 		{
 			APIGroups: []string{""},
 			Resources: []string{"namespaces"},
-			Verbs:     []string{"get", "list", "watch"},
+			Verbs:     []string{"delete", "get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{""},
