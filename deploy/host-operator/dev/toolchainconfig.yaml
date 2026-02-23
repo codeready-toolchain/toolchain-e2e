@@ -10,6 +10,9 @@ spec:
       deactivationDomainsExcluded: '@redhat.com'
     registrationService:
       environment: 'dev'
+    tiers:
+      durationBeforeChangeTierRequestDeletion: '5s'
+      defaultSpaceTier: 'base1ns'
   members:
     default:
       autoscaler:
