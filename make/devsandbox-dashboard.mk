@@ -54,9 +54,11 @@ test-devsandbox-dashboard-e2e-local:
 	$(MAKE) get-and-publish-devsandbox-dashboard e2e-run-devsandbox-dashboard UI_REPO_PATH=${PWD}/../devsandbox-dashboard
 
 .PHONY: clean-devsandbox-dashboard
+clean-devsandbox-dashboard: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 clean-devsandbox-dashboard:
 	@oc delete ns ${DEVSANDBOX_DASHBOARD_NS}
 	@oc delete secret ${OPENID_SECRET_NAME} -n openshift-config
+	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 
 
 E2E_TEST_IMAGE_NAME=devsandbox-dashboard-e2e-tests
