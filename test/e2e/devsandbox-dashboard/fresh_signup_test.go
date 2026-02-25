@@ -42,11 +42,10 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		userSignup := sandboxui.GetUserSignup(t, hostAwait, username)
-		if userSignup != nil {
-			// delete user signup
-			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
-			require.NoError(t, err)
-		}
+		require.NotNil(t, userSignup)
+		// delete user signup
+		err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
+		require.NoError(t, err)
 	}
 }
 
@@ -125,6 +124,7 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		userSignup := sandboxui.GetUserSignup(t, hostAwait, username)
+		require.NotNil(t, userSignup)
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 	}
 

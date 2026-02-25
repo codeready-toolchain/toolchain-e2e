@@ -11,11 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	setupOnce sync.Once
-
+const (
 	TestEnv = "ui-e2e-tests"
 	DevEnv  = "dev"
+)
+
+var (
+	setupOnce sync.Once
 )
 
 func LoadConfig(t *testing.T) {
