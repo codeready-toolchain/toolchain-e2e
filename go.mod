@@ -1,5 +1,9 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
+replace github.com/codeready-toolchain/api => github.com/rajivnathan/api v0.0.0-20260225164436-80c782ea57de
+
+replace github.com/codeready-toolchain/toolchain-common => github.com/rajivnathan/toolchain-common v0.0.0-20260225170920-5096cffa010b
+
 require (
 	github.com/codeready-toolchain/api v0.0.0-20260108115150-4c6695ed18de
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20260108130331-10ca562525fe
