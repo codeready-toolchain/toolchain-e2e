@@ -44,7 +44,8 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 		userSignup := sandboxui.GetUserSignup(t, hostAwait, username)
 		if userSignup != nil {
 			// delete user signup
-			sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
+			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
+			require.NoError(t, err)
 		}
 	}
 }
