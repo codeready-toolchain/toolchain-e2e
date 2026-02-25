@@ -43,5 +43,5 @@ Please note that OCP cluster does not have a valid CA, so when accessing the Dev
 
 ## Clean Developer Sandbox Dashboard
 
-`make clean-devsandbox-dashboard SSO_USERNAME=<SSO_USERNAME>`
+`make clean-devsandbox-dashboard`
 
