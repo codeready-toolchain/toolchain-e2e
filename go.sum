@@ -24,8 +24,8 @@ github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5P
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
 github.com/cloudflare/circl v1.1.0/go.mod h1:prBCrKB9DV4poKZY1l9zBXg2QJY7mvgRvtMxxK7fi4I=
-github.com/cloudflare/circl v1.6.1 h1:zqIqSPIndyBh1bjLVVDHMPpVKqp8Su/V+6MeDzzQBQ0=
-github.com/cloudflare/circl v1.6.1/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
+github.com/cloudflare/circl v1.6.3 h1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=
+github.com/cloudflare/circl v1.6.3/go.mod h1:2eXP6Qfat4O/Yhh8BznvKnJ+uzEoTQ6jVKJRn81BiS4=
 github.com/codeready-toolchain/api v0.0.0-20260108115150-4c6695ed18de h1:rc39ZRUk2AyADzH+bt5On7V7qJz6syUrI4qNyCSXY3o=
 github.com/codeready-toolchain/api v0.0.0-20260108115150-4c6695ed18de/go.mod h1:O/HyAcz6fynt3LXr8wTGaIXt+0v6BpkiJvDxNQDCqyA=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20260108130331-10ca562525fe h1:TOSa/kVCYoLXKX7B/uBLnJsi4Pnaf6nD9K0flumVr6o=
