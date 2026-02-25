@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"crypto/tls"
 	"net/http"
 	"testing"
 	"time"
@@ -19,23 +18,15 @@ import (
 type namespaceResetFeatureIntegrationSuite struct {
 	suite.Suite
 	wait.Awaitilities
-	httpClient http.Client
-}
-
-func (s *namespaceResetFeatureIntegrationSuite) SetupSuite() {
-	s.Awaitilities = testsupport.WaitForDeployments(s.T())
-	s.httpClient = http.Client{
-		Timeout: 3 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true, // nolint:gosec
-			},
-		},
-	}
 }
 
 func TestNamespacesResetE2E(t *testing.T) {
 	suite.Run(t, &namespaceResetFeatureIntegrationSuite{})
+}
+
+// SetupSuite sets up the required preconditions for the tests to run.
+func (s *namespaceResetFeatureIntegrationSuite) SetupSuite() {
+	s.Awaitilities = testsupport.WaitForDeployments(s.T())
 }
 
 // TestResetNamespaces tests that the "namespace reset" endpoint works as
@@ -111,9 +102,9 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 
 		timestamp, ok := namespacesCreationTimestamp[fetchedNamespace.Name]
 		if !ok {
-			require.FailNow(s.T(), "mismatch in the namespace provisioning", `the recreated namespace "%s" was not part of the original provisioned namespaces' list: %#v'`, fetchedNamespace.Namespace, provisionedNamespaces)
+			require.FailNow(s.T(), "mismatch in the namespace provisioning", `the recreated namespace "%s" was not part of the original provisioned namespaces' list: %#v'`, fetchedNamespace.Name, provisionedNamespaces)
 		}
 
-		require.NotEqual(s.T(), timestamp, fetchedNamespace.CreationTimestamp, `the namespace "%s" appears to not have been recreated due to having the same creation timestamp as before`, fetchedNamespace.Name)
+		require.NotEqual(s.T(), timestamp, fetchedNamespace.CreationTimestamp.Time, `the namespace "%s" appears to not have been recreated due to having the same creation timestamp as before`, fetchedNamespace.Name)
 	}
 }
