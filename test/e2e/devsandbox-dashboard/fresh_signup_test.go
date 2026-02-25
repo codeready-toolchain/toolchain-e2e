@@ -18,14 +18,13 @@ import (
 // 2. Clicking "Try it" to signup
 // 3. Accessing OpenShift after signup
 func TestFreshSignup(t *testing.T) {
+	// Step 1: Setup the browser and login (LoadConfig called inside Setup)
+	page := sandboxui.Setup(t, "test-fresh-signup")
+
 	// Ensure the user signup is not present in the system
-	sandboxui.LoadConfig(t)
 	env := viper.GetString("ENVIRONMENT")
 	username := viper.GetString("SSO_USERNAME")
 	ensureNoUserSignup(t, env, username)
-
-	// Step 1: Setup the browser and login
-	page := sandboxui.Setup(t, "test-fresh-signup")
 
 	// Step 2: Verify homepage layout on first access
 	verifyHomepage(t, page)
@@ -42,10 +41,11 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		userSignup := sandboxui.GetUserSignup(t, hostAwait, username)
-		require.NotNil(t, userSignup)
-		// delete user signup
-		err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
-		require.NoError(t, err)
+		if userSignup != nil {
+			// delete user signup
+			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
+			require.NoError(t, err)
+		}
 	}
 }
 

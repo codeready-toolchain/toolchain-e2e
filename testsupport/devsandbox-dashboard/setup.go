@@ -1,8 +1,8 @@
 package sandboxui
 
 import (
-	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -21,12 +21,15 @@ var (
 )
 
 func LoadConfig(t *testing.T) {
-	dir, err := os.Getwd()
+	_, filename, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+
+	configPath := filepath.Join(filepath.Dir(filename), ".env")
+	viper.SetConfigFile(configPath)
+
+	err := viper.ReadInConfig()
 	require.NoError(t, err)
 
-	viper.SetConfigFile(filepath.Join(dir, "../../../testsupport/devsandbox-dashboard/.env"))
-	err = viper.ReadInConfig()
-	require.NoError(t, err)
 	viper.AutomaticEnv()
 }
 
