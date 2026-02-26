@@ -1,6 +1,8 @@
 package sandboxui
 
 import (
+	"context"
+	"errors"
 	"regexp"
 	"testing"
 
@@ -40,7 +42,10 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 	if env == sandboxui.TestEnv {
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
-		userSignup, _ := sandboxui.GetUserSignup(t, hostAwait, username)
+		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			require.NoError(t, err) // fail on unexpected errors
+		}
 		if userSignup != nil {
 			// delete user signup
 			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
@@ -123,7 +128,7 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 		// add signup to cleanup
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
-		userSignup, err := sandboxui.GetUserSignup(t, hostAwait, username)
+		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
 		require.NoError(t, err)
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 	}

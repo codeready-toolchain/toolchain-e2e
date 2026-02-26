@@ -10,8 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-// GetUserSignup retrieves the UserSignup for the configured SSO username
-func GetUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) (*toolchainv1alpha1.UserSignup, error) {
+// WaitForUserSignup retrieves the UserSignup for the configured SSO username
+func WaitForUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) (*toolchainv1alpha1.UserSignup, error) {
 	return hostAwait.WithRetryOptions(wait.TimeoutOption(time.Minute*2)).WaitForUserSignup(t, username,
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
