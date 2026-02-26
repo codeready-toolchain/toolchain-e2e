@@ -7,7 +7,6 @@ spec:
     tiers:
       defaultTier: 'appstudio'
       defaultSpaceTier: 'appstudio'
-      durationBeforeChangeTierRequestDeletion: '5s'
     automaticApproval:
       enabled: true
     deactivation:
