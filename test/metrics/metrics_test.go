@@ -95,8 +95,6 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	for _, m := range toolchainStatus.Status.Members {
 		originalMemberStatuses[m.ClusterName] = m
 	}
-	originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-
 	t.Cleanup(func() {
 		// wait until metrics are back to their respective baselines
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait.ClusterName)
@@ -139,15 +137,6 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces created on member-2
 	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of the provision time for manual approval
 
-	// check if the MUR and Space counts match in ToolchainStatus
-	_, err = hostAwait.WaitForToolchainStatus(t,
-		wait.UntilHasMurCount("internal", originalMursPerDomainCount["internal"]+2),
-		wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+1),
-		wait.UntilHasSpaceCount(memberAwait.ClusterName, originalMemberStatuses[memberAwait.ClusterName].SpaceCount+1),
-		wait.UntilHasSpaceCount(memberAwait2.ClusterName, originalMemberStatuses[memberAwait2.ClusterName].SpaceCount+2),
-	)
-	require.NoError(t, err)
-
 	// when deactivating the users
 	for username, usersignup := range signupsMember2 {
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
@@ -175,15 +164,6 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space still in member-1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces deleted from member-2
 	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no change when deactivated
-
-	// check if the MUR and Space counts match in ToolchainStatus
-	_, err = hostAwait.WaitForToolchainStatus(t,
-		wait.UntilHasMurCount("internal", originalMursPerDomainCount["internal"]),
-		wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+1),
-		wait.UntilHasSpaceCount(memberAwait.ClusterName, originalMemberStatuses[memberAwait.ClusterName].SpaceCount+1),
-		wait.UntilHasSpaceCount(memberAwait2.ClusterName, originalMemberStatuses[memberAwait2.ClusterName].SpaceCount),
-	)
-	require.NoError(t, err)
 }
 
 // TestMetricsWhenUsersAutomaticallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved

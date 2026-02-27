@@ -1525,51 +1525,6 @@ func UntilProxyURLIsPresent(proxyURL string) ToolchainStatusWaitCriterion {
 	}
 }
 
-// UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
-// ToolchainStatus has the given count of MasterUserRecords
-func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
-	return ToolchainStatusWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
-			murs, ok := actual.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-			if !ok {
-				return false
-			}
-			return murs[domain] == expectedCount
-		},
-		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			murs, ok := actual.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-			if !ok {
-				return "MasterUserRecordPerDomain metric not found"
-			}
-			return fmt.Sprintf("expected MasterUserRecordPerDomain metric to be %d. Actual: %d", expectedCount, murs[domain])
-		},
-	}
-}
-
-// UntilHasSpaceCount returns a `ToolchainStatusWaitCriterion` which checks that the given
-// ToolchainStatus has the given count of Spaces
-func UntilHasSpaceCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
-	return ToolchainStatusWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
-			for _, m := range actual.Status.Members {
-				if m.ClusterName == clusterName {
-					return m.SpaceCount == expectedCount
-				}
-			}
-			return false
-		},
-		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			actualCount := 0
-			for _, m := range actual.Status.Members {
-				if m.ClusterName == clusterName {
-					actualCount = m.SpaceCount
-				}
-			}
-			return fmt.Sprintf("expected Space count for cluster %s to be %d. Actual: %d", clusterName, expectedCount, actualCount)
-		},
-	}
-}
-
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...ToolchainStatusWaitCriterion) (*toolchainv1alpha1.ToolchainStatus, error) {
 	// there should only be one toolchain status with the name toolchain-status
