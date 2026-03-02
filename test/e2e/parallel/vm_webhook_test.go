@@ -38,30 +38,39 @@ func TestCreateVirtualMachine(t *testing.T) {
 	for tcname, tc := range map[string]struct {
 		vmName              string
 		domain              map[string]interface{}
-		cloudInitType       string
+		cloudInitVolume     map[string]interface{}
 		expectedMemoryLimit string
 		expectedCPULimit    string
+		expectedError       string
 	}{
 		"vm-cloudInitNoCloud-domain-resource-requests": {
 			vmName:              "cloudinit-nocloud-domain-resources-req",
 			domain:              domainWithResourceRequests("2Gi", "1"),
-			cloudInitType:       cloudInitNoCloud,
+			cloudInitVolume:     cloudInitVolume(cloudInitNoCloud, true),
 			expectedMemoryLimit: "2Gi",
 			expectedCPULimit:    "1",
 		},
 		"vm-cloudInitConfigDrive-domain-resource-requests": {
 			vmName:              "cloudinit-configdrive-domain-resources-req",
 			domain:              domainWithResourceRequests("3Gi", "2"),
-			cloudInitType:       cloudInitConfigDrive,
+			cloudInitVolume:     cloudInitVolume(cloudInitConfigDrive, true),
 			expectedMemoryLimit: "3Gi",
 			expectedCPULimit:    "2",
 		},
 		"vm-domain-memory-guest": {
 			vmName:              "domain-memory-guest",
 			domain:              domainWithMemoryGuest("4Gi"),
-			cloudInitType:       cloudInitNoCloud,
+			cloudInitVolume:     cloudInitVolume(cloudInitNoCloud, true),
 			expectedMemoryLimit: "4Gi",
 			expectedCPULimit:    "",
+		},
+		"vm-without-user": {
+			vmName:              "vm-without-user",
+			domain:              domainWithResourceRequests("1Gi", "1"),
+			cloudInitVolume:     cloudInitVolume(cloudInitNoCloud, false),
+			expectedMemoryLimit: "1Gi",
+			expectedCPULimit:    "1",
+			expectedError:       "this is a Dev Sandbox enforced restriction. A user must be configured in either the cloudInitNoCloud or cloudInitConfigDrive volume.",
 		},
 	} {
 		t.Run(tcname, func(t *testing.T) {
@@ -81,13 +90,17 @@ func TestCreateVirtualMachine(t *testing.T) {
 			userCounter++
 
 			// given
-			vm := vmResourceWithRequestsAndCloudInitVolume(tc.vmName, tc.domain, cloudInitVolume(tc.cloudInitType))
+			vm := vmResourceWithRequestsAndCloudInitVolume(tc.vmName, tc.domain, tc.cloudInitVolume)
 
 			// when
 			// create VM
 			_, err := client.Resource(vmRes).Namespace(vmNamespace).Create(context.TODO(), vm, metav1.CreateOptions{})
 
 			// then
+			if tc.expectedError != "" {
+				require.ErrorContains(t, err, tc.expectedError)
+				return
+			}
 			// verify no error creating VM
 			require.NoError(t, err)
 
@@ -123,7 +136,14 @@ func TestCreateVirtualMachine(t *testing.T) {
 			require.Equal(t, "Exists", tol["operator"])
 
 			// verify cloud-init user data
-			userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), tc.cloudInitType, "userData")
+			var cloudInitType string
+			for k := range tc.cloudInitVolume {
+				if k != "name" {
+					cloudInitType = k
+					break
+				}
+			}
+			userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), cloudInitType, "userData")
 			require.NoError(t, userDataErr)
 			require.True(t, userDataFound, "user data not found")
 			require.Equal(t, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n", userData)
@@ -188,10 +208,14 @@ func domainWithResourceRequests(mem, cpu string) map[string]interface{} {
 	}
 }
 
-func cloudInitVolume(cloudInitType string) map[string]interface{} {
+func cloudInitVolume(cloudInitType string, withUser bool) map[string]interface{} {
+	userData := "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\n"
+	if withUser {
+		userData += "user: cloud-user\n"
+	}
 	return map[string]interface{}{
 		cloudInitType: map[string]interface{}{
-			"userData": "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nuser: cloud-user\n",
+			"userData": userData,
 		},
 		"name": "cloudinitdisk",
 	}
