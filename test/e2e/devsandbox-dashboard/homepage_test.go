@@ -124,7 +124,7 @@ func TestDevSandbox(t *testing.T) {
 	card := page.GetByText("OpenShift Comprehensive cloud")
 	sandboxui.IsVisible(t, card)
 
-	tryItBtn := card.Locator("button", playwright.LocatorLocatorOptions{
+	tryItBtn := card.Locator("a", playwright.LocatorLocatorOptions{
 		HasText: "Try it",
 	})
 
