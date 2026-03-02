@@ -140,7 +140,7 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 	a.baselineValues[HostOperatorVersionMetric] = a.GetMetricValue(t, HostOperatorVersionMetric)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
 		spacesKey := a.baselineKey(t, SpacesMetric, "cluster_name", name)
-		a.baselineValues[spacesKey] += a.GetMetricValue(t, SpacesMetric, "cluster_name", name)
+		a.baselineValues[spacesKey] += a.GetMetricValueOrZero(t, SpacesMetric, "cluster_name", name) // assume `0` if no space was ever provisioned for the given cluster (hence, the metric with this label is not exposed)
 	}
 	// capture `sandbox_users_per_activations_and_domain` with "activations" from `1` to `10` and `internal`/`external` domains
 	for i := 1; i <= 10; i++ {

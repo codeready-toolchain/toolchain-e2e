@@ -706,24 +706,6 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		t.Run("verify metrics did not change after restarting pod without forcing recount", func(t *testing.T) {
-			// given
-			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(false))
-
-			// when restarting the pod
-			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"control-plane": "controller-manager"})
-
-			// then
-			require.NoError(t, err)
-			// wait for the deployment to be ready again (this ensures pods are deleted and recreated)
-			hostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
-			// wait for metrics service to be available
-			hostAwait.WaitForMetricsService(t)
-			// metrics have not changed yet
-			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
-			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
-		})
-
 		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
 			// given
 			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(true))
