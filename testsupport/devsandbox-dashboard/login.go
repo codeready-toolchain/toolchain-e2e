@@ -26,7 +26,7 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 	}
 
 	switch environment {
-	case "dev":
+	case DevEnv:
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Red Hat login",
 		})
@@ -39,7 +39,7 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 		lp.LoginBtn = page.GetByRole("button", playwright.PageGetByRoleOptions{
 			Name: "Log in",
 		})
-	case UIE2ETestsEnv:
+	case TestEnv:
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Username or email",
 		})
@@ -67,7 +67,7 @@ func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
 	err := lp.LoginUsernameLoc.Fill(loginUsername)
 	require.NoError(t, err)
 
-	if lp.Env == "dev" {
+	if lp.Env == DevEnv {
 		err := lp.NextBtn.Click()
 		require.NoError(t, err)
 	}
