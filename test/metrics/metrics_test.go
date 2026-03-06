@@ -671,9 +671,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	hostAwait.UpdateToolchainConfig(t,
-		testconfig.AutomaticApproval().Enabled(true),
-		testconfig.Metrics().ForceSynchronization(false))
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 	userSignups := CreateMultipleSignupsWithMURs(t, awaitilities, nil, 2)
 
@@ -706,9 +704,9 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
+		t.Run("verify metrics are still correct after restarting pod", func(t *testing.T) {
 			// given
-			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(true))
+			hostAwait.UpdateToolchainConfig(t)
 
 			// when restarting the pod
 			// TODO: unneeded once the ToolchainConfig controller will be in place ?
