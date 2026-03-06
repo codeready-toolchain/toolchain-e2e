@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type namespaceResetFeatureIntegrationSuite struct {
@@ -33,6 +36,7 @@ func (s *namespaceResetFeatureIntegrationSuite) SetupSuite() {
 // expected.
 func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 	// given
+	hostAwaitily := s.Host()
 	memberAwaitily := s.Member1()
 
 	// Create a new user signup for the test.
@@ -107,4 +111,14 @@ func (s *namespaceResetFeatureIntegrationSuite) TestResetNamespaces() {
 
 		require.NotEqual(s.T(), timestamp, fetchedNamespace.CreationTimestamp.Time, `the namespace "%s" appears to not have been recreated due to having the same creation timestamp as before`, fetchedNamespace.Name)
 	}
+
+	// DELETEME - printing the member service account's cluster role to check
+	// its permissions.
+	clusterRole := rbacv1.ClusterRole{}
+	err = hostAwaitily.Client.Get(context.TODO(), types.NamespacedName{Name: "toolchaincluster-" + memberAwaitily.Namespace}, &clusterRole)
+	require.NoError(s.T(), err, "unable to obtain the cluster role")
+
+	s.T().Logf("ClusterRole: %+v", clusterRole)
+
+	require.FailNow(s.T(), "the test succeeded but we are failing to gather information")
 }
