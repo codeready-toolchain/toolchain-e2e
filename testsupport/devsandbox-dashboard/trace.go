@@ -55,8 +55,9 @@ func getTraceDirectory(t *testing.T) string {
 	return getTraceDirectoryPath
 }
 
-// handleRecordedVideo handles the main recorded video and popup videos by renaming it to the test name instead of just auto-generated IDs, if test fails
-// and removing it if the test passes
+// handleRecordedVideo manages recorded videos for main pages and popups:
+// - On test failure: renames videos from auto-generated IDs to test names (popups include UUID suffix)
+// - On test success: removes videos
 func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath string) {
 	t.Cleanup(func() {
 		videoPath, err := page.Video().Path()
