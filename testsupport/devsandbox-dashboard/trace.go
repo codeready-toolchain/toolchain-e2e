@@ -55,14 +55,12 @@ func getTraceDirectory(t *testing.T) string {
 
 // handleRecordedVideo handles the main recorded video by renaming it to the test name instead of auto-generated IDs, if test fails
 // and removing it if the test passes
-func handleRecordedVideo(t *testing.T, page playwright.Page, traceDirectory string) {
+func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath string) {
 	t.Cleanup(func() {
 		videoPath, err := page.Video().Path()
 		if err == nil && videoPath != "" {
 			if t.Failed() {
-				fileName := fmt.Sprintf("%s.webm", t.Name())
-
-				if err := os.Rename(videoPath, filepath.Join(traceDirectory, fileName)); err != nil {
+				if err := os.Rename(videoPath, targetVideoPath); err != nil {
 					t.Logf("failed to rename video %s: %v", videoPath, err)
 				}
 			} else {
