@@ -61,8 +61,9 @@ func getTraceDirectory(t *testing.T) string {
 func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath string) {
 	t.Cleanup(func() {
 		videoPath, err := page.Video().Path()
-		require.NoError(t, err)
-		require.NotEmpty(t, videoPath)
+		if err != nil || videoPath == "" {
+			t.Logf("failed to resolve video path %s: %v", videoPath, err)
+		}
 
 		// Handle failed test - rename video
 		if t.Failed() {

@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator playwright.Locator) (playwright.Page, error) {
+func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator playwright.Locator, testName string) (playwright.Page, error) {
 	var popup playwright.Page
 	var err error
 
@@ -43,7 +43,7 @@ func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator pla
 		return nil, fmt.Errorf("popup did not finish loading: %w", waitErr)
 	}
 
-	targetVideoPath := filepath.Join(getTraceDirectory(t), fmt.Sprintf("%s-popup.webm", t.Name()))
+	targetVideoPath := filepath.Join(getTraceDirectory(t), fmt.Sprintf("%s-popup.webm", testName))
 	handleRecordedVideo(t, popup, targetVideoPath)
 
 	return popup, nil
