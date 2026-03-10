@@ -3,7 +3,7 @@ package sandboxui
 import (
 	"context"
 	"fmt"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -43,19 +43,8 @@ func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator pla
 		return nil, fmt.Errorf("popup did not finish loading: %w", waitErr)
 	}
 
-	// Cleanup popup video since test main video includes all flow
-	t.Cleanup(func() {
-		videoPath, err := popup.Video().Path()
-		if err == nil && videoPath != "" {
-			if err := os.Remove(videoPath); err != nil {
-				t.Logf("failed to remove popup video %s: %v", videoPath, err)
-			} else {
-				t.Logf("successfully removed popup video: %s", videoPath)
-			}
-		} else {
-			t.Logf("skipped video removal - path empty or error: %s, %v", videoPath, err)
-		}
-	})
+	targetVideoPath := filepath.Join(getTraceDirectory(t), fmt.Sprintf("%s-popup.webm", t.Name()))
+	handleRecordedVideo(t, popup, targetVideoPath)
 
 	return popup, nil
 }

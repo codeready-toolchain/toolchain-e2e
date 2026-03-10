@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/playwright-community/playwright-go"
@@ -44,10 +45,11 @@ func getTraceDirectory(t *testing.T) string {
 		getTraceDirectoryPath = filepath.Join(os.Getenv("E2E_REPO_PATH"), dirName)
 	}
 
-	if os.Getenv("CI") == "true" {
+	// Use ARTIFACT_DIR if set (CI environment)
+	if artifactDir := os.Getenv("ARTIFACT_DIR"); artifactDir != "" {
 		// save trace in the job CI artifact directory
 		// artifacts/e2e/test/artifacts/devsandbox-dashboard/trace
-		getTraceDirectoryPath = filepath.Join(os.Getenv("ARTIFACT_DIR"), "devsandbox-dashboard", dirName)
+		getTraceDirectoryPath = filepath.Join(artifactDir, "devsandbox-dashboard", dirName)
 	}
 
 	return getTraceDirectoryPath
@@ -58,19 +60,30 @@ func getTraceDirectory(t *testing.T) string {
 func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath string) {
 	t.Cleanup(func() {
 		videoPath, err := page.Video().Path()
-		if err == nil && videoPath != "" {
-			if t.Failed() {
-				if err := os.Rename(videoPath, targetVideoPath); err != nil {
-					t.Logf("failed to rename video %s: %v", videoPath, err)
+		require.NoError(t, err)
+		require.NotEmpty(t, videoPath)
+
+		// Handle failed test - rename video
+		if t.Failed() {
+			// For popup videos, rename with UUID to avoid conflicts when multiple popups exist in the same test
+			if strings.Contains(targetVideoPath, "popup") {
+				uuid := filepath.Base(videoPath)
+				uuid = strings.TrimSuffix(uuid, ".webm")
+				if len(uuid) > 8 {
+					uuid = uuid[:8] // Truncate to first 8 chars
 				}
-			} else {
-				// Test passed, remove the video
-				if err := os.Remove(videoPath); err != nil {
-					t.Logf("failed to remove video %s: %v", videoPath, err)
-				}
+				targetVideoPath = strings.Replace(targetVideoPath, "popup", fmt.Sprintf("popup-%s", uuid), 1)
 			}
-		} else {
-			t.Logf("skipped video removal - path empty or error: %s, %v", videoPath, err)
+
+			if err := os.Rename(videoPath, targetVideoPath); err != nil {
+				t.Logf("failed to rename video %s: %v", videoPath, err)
+			}
+			return
+		}
+
+		// Test passed - remove video
+		if err := os.Remove(videoPath); err != nil {
+			t.Logf("failed to remove video %s: %v", videoPath, err)
 		}
 	})
 }
