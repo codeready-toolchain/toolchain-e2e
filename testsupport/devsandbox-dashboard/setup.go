@@ -1,8 +1,8 @@
 package sandboxui
 
 import (
-	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -11,21 +11,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	TestEnv = "ui-e2e-tests"
+	DevEnv  = "dev"
+)
+
 var (
 	setupOnce sync.Once
-
-	UIE2ETestsEnv = "ui-e2e-tests"
 )
+
+func LoadConfig(t *testing.T) {
+	_, filename, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+
+	configPath := filepath.Join(filepath.Dir(filename), ".env")
+	viper.SetConfigFile(configPath)
+
+	err := viper.ReadInConfig()
+	require.NoError(t, err)
+
+	viper.AutomaticEnv()
+}
 
 func Setup(t *testing.T, testName string) playwright.Page {
 	setupOnce.Do(func() {
-		dir, err := os.Getwd()
-		require.NoError(t, err)
-
-		viper.SetConfigFile(filepath.Join(dir, "../../../testsupport/devsandbox-dashboard/.env"))
-		err = viper.ReadInConfig()
-		require.NoError(t, err)
-		viper.AutomaticEnv()
+		LoadConfig(t)
 	})
 
 	env := viper.GetString("ENVIRONMENT")
@@ -39,7 +49,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	browser := launchBrowser(t, pw)
 
 	opts := playwright.BrowserNewContextOptions{}
-	if env == UIE2ETestsEnv {
+	if env == TestEnv {
 		opts.IgnoreHttpsErrors = playwright.Bool(true)
 	}
 
@@ -55,7 +65,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	login := NewLoginPage(page, env)
 	login.Navigate(t, baseURL)
 
-	if env == "dev" {
+	if env == DevEnv {
 		// handle cookie consent
 		// on dev environment, the cookie consent appears after the login page is loaded
 		handleCookiesConsent(t, page)
