@@ -97,4 +97,5 @@ endif
 	  -e QUAY_NAMESPACE=$(QUAY_NAMESPACE) \
 	  -e DEPLOY_UI=true \
 	  -e PUBLISH_UI=false \
+	  -e RUNNING_IN_CONTAINER=true \
 	  $(E2E_TEST_IMAGE_NAME) make test-devsandbox-dashboard-e2e
