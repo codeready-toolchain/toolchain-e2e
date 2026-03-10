@@ -63,6 +63,7 @@ func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath str
 		videoPath, err := page.Video().Path()
 		if err != nil || videoPath == "" {
 			t.Logf("failed to resolve video path %s: %v", videoPath, err)
+			return
 		}
 
 		// Handle failed test - rename video
