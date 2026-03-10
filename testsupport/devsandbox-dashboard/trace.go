@@ -20,19 +20,7 @@ func trace(t *testing.T, context playwright.BrowserContext, testName string) {
 	})
 	require.NoError(t, err)
 
-	dir, err := os.Getwd()
-	require.NoError(t, err)
-	tracePath := filepath.Join(dir, "..", "..", "trace", fmt.Sprintf("trace-%s.zip", testName))
-
-	if os.Getenv("RUNNING_IN_CONTAINER") == "true" {
-		tracePath = filepath.Join(os.Getenv("E2E_REPO_PATH"), "trace", fmt.Sprintf("trace-%s.zip", testName))
-	}
-
-	if os.Getenv("CI") == "true" {
-		// save trace in the job CI artifact directory
-		// artifacts/e2e/test/artifacts/devsandbox-dashboard/trace/trace-%s.zip
-		tracePath = filepath.Join(os.Getenv("ARTIFACT_DIR"), "devsandbox-dashboard", "trace", fmt.Sprintf("trace-%s.zip", testName))
-	}
+	tracePath := filepath.Join(getTraceDirectory(t), fmt.Sprintf("trace-%s.zip", testName))
 
 	t.Cleanup(func() {
 		if t.Failed() {
@@ -41,6 +29,50 @@ func trace(t *testing.T, context playwright.BrowserContext, testName string) {
 			} else {
 				t.Logf("saved trace to %s", tracePath)
 			}
+		}
+	})
+}
+
+func getTraceDirectory(t *testing.T) string {
+	dir, err := os.Getwd()
+	require.NoError(t, err)
+
+	dirName := "trace"
+	getTraceDirectoryPath := filepath.Join(dir, "..", "..", dirName)
+
+	if os.Getenv("RUNNING_IN_CONTAINER") == "true" {
+		getTraceDirectoryPath = filepath.Join(os.Getenv("E2E_REPO_PATH"), dirName)
+	}
+
+	if os.Getenv("CI") == "true" {
+		// save trace in the job CI artifact directory
+		// artifacts/e2e/test/artifacts/devsandbox-dashboard/trace
+		getTraceDirectoryPath = filepath.Join(os.Getenv("ARTIFACT_DIR"), "devsandbox-dashboard", dirName)
+	}
+
+	return getTraceDirectoryPath
+}
+
+// handleRecordedVideo handles the main recorded video by renaming it to the test name instead of auto-generated IDs, if test fails
+// and removing it if the test passes
+func handleRecordedVideo(t *testing.T, page playwright.Page, traceDirectory string) {
+	t.Cleanup(func() {
+		videoPath, err := page.Video().Path()
+		if err == nil && videoPath != "" {
+			if t.Failed() {
+				fileName := fmt.Sprintf("%s.webm", t.Name())
+
+				if err := os.Rename(videoPath, filepath.Join(traceDirectory, fileName)); err != nil {
+					t.Logf("failed to rename video %s: %v", videoPath, err)
+				}
+			} else {
+				// Test passed, remove the video
+				if err := os.Remove(videoPath); err != nil {
+					t.Logf("failed to remove video %s: %v", videoPath, err)
+				}
+			}
+		} else {
+			t.Logf("skipped video removal - path empty or error: %s, %v", videoPath, err)
 		}
 	})
 }

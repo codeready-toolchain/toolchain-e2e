@@ -183,7 +183,7 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env string) {
 	sandboxui.IsVisible(t, tryItBtn)
 
 	// open the "Try it" button in a new popup and wait for it to fully load
-	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(page, tryItBtn)
+	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(t, page, tryItBtn)
 	require.NoError(t, err)
 
 	img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{

@@ -3,14 +3,16 @@ package sandboxui
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-func ClickAndWaitForPopup(currentPage playwright.Page, locator playwright.Locator) (playwright.Page, error) {
+func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator playwright.Locator) (playwright.Page, error) {
 	var popup playwright.Page
 	var err error
 
@@ -40,5 +42,20 @@ func ClickAndWaitForPopup(currentPage playwright.Page, locator playwright.Locato
 	if waitErr != nil {
 		return nil, fmt.Errorf("popup did not finish loading: %w", waitErr)
 	}
+
+	// Cleanup popup video since test main video includes all flow
+	t.Cleanup(func() {
+		videoPath, err := popup.Video().Path()
+		if err == nil && videoPath != "" {
+			if err := os.Remove(videoPath); err != nil {
+				t.Logf("failed to remove popup video %s: %v", videoPath, err)
+			} else {
+				t.Logf("successfully removed popup video: %s", videoPath)
+			}
+		} else {
+			t.Logf("skipped video removal - path empty or error: %s, %v", videoPath, err)
+		}
+	})
+
 	return popup, nil
 }
