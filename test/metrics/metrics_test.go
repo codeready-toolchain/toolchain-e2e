@@ -95,8 +95,6 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	for _, m := range toolchainStatus.Status.Members {
 		originalMemberStatuses[m.ClusterName] = m
 	}
-	originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-
 	t.Cleanup(func() {
 		// wait until metrics are back to their respective baselines
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait.ClusterName)
@@ -139,15 +137,6 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces created on member-2
 	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of the provision time for manual approval
 
-	// check if the MUR and Space counts match in ToolchainStatus
-	_, err = hostAwait.WaitForToolchainStatus(t,
-		wait.UntilHasMurCount("internal", originalMursPerDomainCount["internal"]+2),
-		wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+1),
-		wait.UntilHasSpaceCount(memberAwait.ClusterName, originalMemberStatuses[memberAwait.ClusterName].SpaceCount+1),
-		wait.UntilHasSpaceCount(memberAwait2.ClusterName, originalMemberStatuses[memberAwait2.ClusterName].SpaceCount+2),
-	)
-	require.NoError(t, err)
-
 	// when deactivating the users
 	for username, usersignup := range signupsMember2 {
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
@@ -175,15 +164,6 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space still in member-1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces deleted from member-2
 	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no change when deactivated
-
-	// check if the MUR and Space counts match in ToolchainStatus
-	_, err = hostAwait.WaitForToolchainStatus(t,
-		wait.UntilHasMurCount("internal", originalMursPerDomainCount["internal"]),
-		wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+1),
-		wait.UntilHasSpaceCount(memberAwait.ClusterName, originalMemberStatuses[memberAwait.ClusterName].SpaceCount+1),
-		wait.UntilHasSpaceCount(memberAwait2.ClusterName, originalMemberStatuses[memberAwait2.ClusterName].SpaceCount),
-	)
-	require.NoError(t, err)
 }
 
 // TestMetricsWhenUsersAutomaticallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
@@ -691,9 +671,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	hostAwait.UpdateToolchainConfig(t,
-		testconfig.AutomaticApproval().Enabled(true),
-		testconfig.Metrics().ForceSynchronization(false))
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 	userSignups := CreateMultipleSignupsWithMURs(t, awaitilities, nil, 2)
 
@@ -726,27 +704,9 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		t.Run("verify metrics did not change after restarting pod without forcing recount", func(t *testing.T) {
+		t.Run("verify metrics are still correct after restarting pod", func(t *testing.T) {
 			// given
-			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(false))
-
-			// when restarting the pod
-			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"control-plane": "controller-manager"})
-
-			// then
-			require.NoError(t, err)
-			// wait for the deployment to be ready again (this ensures pods are deleted and recreated)
-			hostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
-			// wait for metrics service to be available
-			hostAwait.WaitForMetricsService(t)
-			// metrics have not changed yet
-			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
-			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
-		})
-
-		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
-			// given
-			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(true))
+			hostAwait.UpdateToolchainConfig(t)
 
 			// when restarting the pod
 			// TODO: unneeded once the ToolchainConfig controller will be in place ?

@@ -30,6 +30,9 @@ endif
 
 .PHONY: e2e-run-devsandbox-dashboard
 e2e-run-devsandbox-dashboard: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
+e2e-run-devsandbox-dashboard: MEMBER_NS=$(shell oc get projects -l app=member-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 2 | head -n 1)
+e2e-run-devsandbox-dashboard: MEMBER_NS_2=$(shell oc get projects -l app=member-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 2 | tail -n 1)
+e2e-run-devsandbox-dashboard: SECOND_MEMBER=$(shell if [ "$(MEMBER_NS)" != "$(MEMBER_NS_2)" ] && [ -n "$(MEMBER_NS_2)" ]; then echo "true"; else echo "false"; fi)
 e2e-run-devsandbox-dashboard: RHDH=https://rhdh-${DEVSANDBOX_DASHBOARD_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
 e2e-run-devsandbox-dashboard:
 	@echo "Installing Firefox browser for Playwright..."
@@ -40,8 +43,7 @@ e2e-run-devsandbox-dashboard:
 	
 	@echo "Running Developer Sandbox Dashboard e2e tests in firefox..."
 	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/.env > testsupport/devsandbox-dashboard/.env
-	go test "./test/e2e/devsandbox-dashboard" -v -timeout=10m -failfast
-	@oc delete usersignup $(SSO_USERNAME_READ) -n $(HOST_NS)
+	@HOST_NS=$(HOST_NS) MEMBER_NS=$(MEMBER_NS) MEMBER_NS_2=$(MEMBER_NS_2) REGISTRATION_SERVICE_NS=$(HOST_NS) SECOND_MEMBER_MODE=$(SECOND_MEMBER) go test "./test/e2e/devsandbox-dashboard" -v -timeout=10m -failfast
 
 	@echo "The Developer Sandbox Dashboard e2e tests successfully finished"
 

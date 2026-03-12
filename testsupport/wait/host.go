@@ -140,7 +140,7 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 	a.baselineValues[HostOperatorVersionMetric] = a.GetMetricValue(t, HostOperatorVersionMetric)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
 		spacesKey := a.baselineKey(t, SpacesMetric, "cluster_name", name)
-		a.baselineValues[spacesKey] += a.GetMetricValue(t, SpacesMetric, "cluster_name", name)
+		a.baselineValues[spacesKey] += a.GetMetricValueOrZero(t, SpacesMetric, "cluster_name", name) // assume `0` if no space was ever provisioned for the given cluster (hence, the metric with this label is not exposed)
 	}
 	// capture `sandbox_users_per_activations_and_domain` with "activations" from `1` to `10` and `internal`/`external` domains
 	for i := 1; i <= 10; i++ {
@@ -1521,51 +1521,6 @@ func UntilProxyURLIsPresent(proxyURL string) ToolchainStatusWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
 			return fmt.Sprintf("Proxy endpoint in the ToolchainStatus doesn't match. Expected: '%s'. Actual: %s", proxyURL, actual.Status.HostRoutes.ProxyURL)
-		},
-	}
-}
-
-// UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
-// ToolchainStatus has the given count of MasterUserRecords
-func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
-	return ToolchainStatusWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
-			murs, ok := actual.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-			if !ok {
-				return false
-			}
-			return murs[domain] == expectedCount
-		},
-		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			murs, ok := actual.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-			if !ok {
-				return "MasterUserRecordPerDomain metric not found"
-			}
-			return fmt.Sprintf("expected MasterUserRecordPerDomain metric to be %d. Actual: %d", expectedCount, murs[domain])
-		},
-	}
-}
-
-// UntilHasSpaceCount returns a `ToolchainStatusWaitCriterion` which checks that the given
-// ToolchainStatus has the given count of Spaces
-func UntilHasSpaceCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
-	return ToolchainStatusWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
-			for _, m := range actual.Status.Members {
-				if m.ClusterName == clusterName {
-					return m.SpaceCount == expectedCount
-				}
-			}
-			return false
-		},
-		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			actualCount := 0
-			for _, m := range actual.Status.Members {
-				if m.ClusterName == clusterName {
-					actualCount = m.SpaceCount
-				}
-			}
-			return fmt.Sprintf("expected Space count for cluster %s to be %d. Actual: %d", clusterName, expectedCount, actualCount)
 		},
 	}
 }

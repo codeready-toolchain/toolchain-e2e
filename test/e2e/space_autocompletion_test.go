@@ -115,12 +115,14 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {
+			spaceCount := hostAwait.GetMetricValue(t, wait.SpacesMetric, "cluster_name", m.ClusterName)
+			t.Logf("spaceCount for cluster %s: %d", m.ClusterName, int(spaceCount))
 			if memberAwait1.ClusterName == m.ClusterName {
 				//the value of this is not going beyond 100 and it won't overflow, hence its okay to ignore the overflow linter error
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount))) //nolint:gosec
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(spaceCount))) //nolint:gosec
 			} else if memberAwait2.ClusterName == m.ClusterName {
 				//the value of this is not going beyond 100 and it won't overflow, hence its okay to ignore the overflow linter error
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1))) //nolint:gosec
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(spaceCount+1))) //nolint:gosec
 			}
 		}
 
@@ -134,8 +136,10 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			// given
 
 			for _, m := range toolchainStatus.Status.Members {
+				spaceCount := hostAwait.GetMetricValue(t, wait.SpacesMetric, "cluster_name", m.ClusterName)
+				t.Logf("spaceCount for cluster %s: %d", m.ClusterName, int(spaceCount))
 				//the value of this is not going beyond 100 and it won't overflow, hence its okay to ignore the overflow linter error
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, m.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount))) //nolint:gosec
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, m.ClusterName, testSpc.MaxNumberOfSpaces(uint(spaceCount))) //nolint:gosec
 			}
 
 			// when
