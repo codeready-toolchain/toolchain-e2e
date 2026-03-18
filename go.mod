@@ -147,6 +147,6 @@ toolchain go1.24.13
 
 tool github.com/playwright-community/playwright-go/cmd/playwright
 
-replace github.com/codeready-toolchain/api => github.com/metlos/api v0.0.0-20260311111036-f94bc6f41690
+replace github.com/codeready-toolchain/api => github.com/metlos/api v0.0.0-20260318102359-237e681a639a
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20260311144111-07d44b4ea932
+replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20260318113116-fbd4bba9beb1
