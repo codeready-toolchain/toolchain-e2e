@@ -13,7 +13,7 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/manifoldco/promptui v0.9.0
-	// using latest commit from 'github.com/openshift/api branch release-4.19'
+	// using latest commit from 'github.com/openshift/api branch release-4.21'
 	github.com/openshift/api v0.0.0-20260304172252-b0658d22beea
 	github.com/operator-framework/api v0.34.0
 	github.com/pkg/errors v0.9.1
