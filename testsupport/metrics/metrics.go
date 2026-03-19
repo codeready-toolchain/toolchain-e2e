@@ -10,6 +10,7 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"k8s.io/client-go/rest"
 )
 
@@ -62,7 +63,7 @@ func getMetricValue[T any](restConfig *rest.Config, baseURL string, family strin
 	}
 
 	// parse the metrics
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.UTF8Validation)
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
 	if err != nil {
 		return nil, err
@@ -156,7 +157,7 @@ func GetMetricLabels(restConfig *rest.Config, baseURL string, family string) ([]
 	}
 
 	// parse the metrics
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.UTF8Validation)
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
 	if err != nil {
 		return nil, err
