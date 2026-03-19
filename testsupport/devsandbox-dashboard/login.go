@@ -64,7 +64,11 @@ func (lp *LoginPage) Navigate(t *testing.T, url string) {
 }
 
 func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
-	err := lp.LoginUsernameLoc.Fill(loginUsername)
+	// Mask username field
+	_, err := lp.LoginUsernameLoc.Evaluate(`element => element.style.webkitTextSecurity = 'disc'`, nil)
+	require.NoError(t, err)
+
+	err = lp.LoginUsernameLoc.Fill(loginUsername)
 	require.NoError(t, err)
 
 	if lp.Env == DevEnv {

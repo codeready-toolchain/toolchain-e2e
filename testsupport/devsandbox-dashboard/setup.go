@@ -1,6 +1,7 @@
 package sandboxui
 
 import (
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -53,6 +54,11 @@ func Setup(t *testing.T, testName string) playwright.Page {
 		opts.IgnoreHttpsErrors = playwright.Bool(true)
 	}
 
+	traceDirectory := getTraceDirectory(t)
+	opts.RecordVideo = &playwright.RecordVideo{
+		Dir: traceDirectory,
+	}
+
 	context, err := browser.NewContext(opts)
 	require.NoError(t, err)
 
@@ -61,6 +67,8 @@ func Setup(t *testing.T, testName string) playwright.Page {
 
 	page, err := context.NewPage()
 	require.NoError(t, err)
+
+	handleRecordedVideo(t, page, filepath.Join(traceDirectory, fmt.Sprintf("%s.webm", testName)))
 
 	login := NewLoginPage(page, env)
 	login.Navigate(t, baseURL)
