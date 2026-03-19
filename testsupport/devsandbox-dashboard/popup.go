@@ -3,14 +3,16 @@ package sandboxui
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-func ClickAndWaitForPopup(currentPage playwright.Page, locator playwright.Locator) (playwright.Page, error) {
+func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator playwright.Locator, testName string) (playwright.Page, error) {
 	var popup playwright.Page
 	var err error
 
@@ -40,5 +42,9 @@ func ClickAndWaitForPopup(currentPage playwright.Page, locator playwright.Locato
 	if waitErr != nil {
 		return nil, fmt.Errorf("popup did not finish loading: %w", waitErr)
 	}
+
+	targetVideoPath := filepath.Join(getTraceDirectory(t), fmt.Sprintf("%s-popup.webm", testName))
+	handleRecordedVideo(t, popup, targetVideoPath)
+
 	return popup, nil
 }
