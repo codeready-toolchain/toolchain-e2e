@@ -32,18 +32,41 @@ func TestOperatorVersionMetrics(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 
 	t.Run("host-operator", func(t *testing.T) {
+
 		// given
 		hostAwait := awaitilities.Host()
-		// host metrics should be available at this point
-		hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
+		_, err := hostAwait.WaitForRouteToBeAvailable(t, hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
+		require.NoError(t, err)
 
-		// when
-		labels := hostAwait.GetMetricLabels(t, wait.HostOperatorVersionMetric)
+		t.Run("commit", func(t *testing.T) {
+			// when
+			labels := hostAwait.GetMetricLabels(t, hostAwait.MetricsURL, wait.HostOperatorCommitMetric)
 
-		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
-		require.Len(t, labels, 1)
-		commit := labels[0]["commit"]
-		assert.Len(t, commit, 7)
+			// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+			require.Len(t, labels, 1)
+			commit := labels[0]["commit"]
+			assert.Len(t, commit, len("e6a12a442a60dfd86d348a030ad2e789c79184b5")) // example value: 40 characters
+		})
+
+		t.Run("short commit", func(t *testing.T) {
+			// when
+			labels := hostAwait.GetMetricLabels(t, hostAwait.MetricsURL, wait.HostOperatorShortCommitMetric)
+
+			// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+			require.Len(t, labels, 1)
+			commit := labels[0]["commit"]
+			assert.Len(t, commit, 7)
+		})
+
+		t.Run("version", func(t *testing.T) {
+			// when
+			labels := hostAwait.GetMetricLabels(t, hostAwait.MetricsURL, wait.HostOperatorVersionMetric)
+
+			// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+			require.Len(t, labels, 1)
+			commit := labels[0]["commit"]
+			assert.Len(t, commit, 7)
+		})
 	})
 
 	t.Run("member-operators", func(t *testing.T) {
@@ -56,7 +79,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 
 		// --- member1 ---
 		// when
-		labels := member1Await.GetMetricLabels(t, wait.MemberOperatorVersionMetric)
+		labels := member1Await.GetMetricLabels(t, member1Await.MetricsURL, wait.MemberOperatorVersionMetric)
 
 		// verify that the "version" metric exists for the first Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
@@ -65,7 +88,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 
 		// --- member2 ---
 		// when
-		labels = member2Await.GetMetricLabels(t, wait.MemberOperatorVersionMetric)
+		labels = member2Await.GetMetricLabels(t, member2Await.MetricsURL, wait.MemberOperatorVersionMetric)
 
 		// verify that the "version" metric exists for the second Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
@@ -75,6 +98,35 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// expect the same version on member1 and member2
 		assert.Equal(t, commit1, commit2)
 	})
+
+	t.Run("registration-service", func(t *testing.T) {
+
+		// given
+		hostAwait := awaitilities.Host()
+		_, err := hostAwait.WaitForRouteToBeAvailable(t, hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
+		require.NoError(t, err)
+
+		t.Run("commit", func(t *testing.T) {
+			// when
+			labels := hostAwait.GetMetricLabels(t, hostAwait.RegistrationServiceMetricsURL, wait.RegistrationServiceCommitMetric)
+
+			// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+			require.Len(t, labels, 1)
+			commit := labels[0]["commit"]
+			assert.Len(t, commit, len("da3f54634cc65075d51d067a157831d44bf1413e")) // example value: 40 characters
+		})
+
+		t.Run("short commit", func(t *testing.T) {
+			// when
+			labels := hostAwait.GetMetricLabels(t, hostAwait.RegistrationServiceMetricsURL, wait.RegistrationServiceShortCommitMetric)
+
+			// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+			require.Len(t, labels, 1)
+			commit := labels[0]["commit"]
+			assert.Len(t, commit, 7)
+		})
+	})
+
 }
 
 // TestMetricsWhenUsersManuallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
