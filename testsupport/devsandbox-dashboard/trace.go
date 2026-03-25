@@ -68,17 +68,8 @@ func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath str
 
 		// Handle failed test - rename video
 		if t.Failed() {
-			// For popup videos, rename with UUID to avoid conflicts when multiple popups exist in the same test
-			if strings.Contains(targetVideoPath, "popup") {
-				uuid := filepath.Base(videoPath)
-				uuid = strings.TrimSuffix(uuid, ".webm")
-				if len(uuid) > 8 {
-					uuid = uuid[:8] // Truncate to first 8 chars
-				}
-				targetVideoPath = strings.Replace(targetVideoPath, "popup", fmt.Sprintf("popup-%s", uuid), 1)
-			}
-
-			if err := os.Rename(videoPath, targetVideoPath); err != nil {
+			finalPath := buildPopupVideoPath(targetVideoPath, videoPath)
+			if err := os.Rename(videoPath, finalPath); err != nil {
 				t.Logf("failed to rename video %s: %v", videoPath, err)
 			}
 			return
@@ -89,4 +80,46 @@ func handleRecordedVideo(t *testing.T, page playwright.Page, targetVideoPath str
 			t.Logf("failed to remove video %s: %v", videoPath, err)
 		}
 	})
+}
+
+func buildPopupVideoPath(targetPath, videoPath string) string {
+	if !strings.Contains(targetPath, "popup") {
+		return targetPath
+	}
+	uuid := filepath.Base(videoPath)
+	uuid = strings.TrimSuffix(uuid, ".webm")
+	if len(uuid) > 8 {
+		uuid = uuid[:8]
+	}
+	return strings.Replace(targetPath, "popup", fmt.Sprintf("popup-%s", uuid), 1)
+}
+
+func maskUsername(t *testing.T, page playwright.Page) {
+	err := page.Context().AddInitScript(playwright.Script{
+		Content: playwright.String(`
+			const applyBlur = () => {
+				document.querySelectorAll('input[name="username"], span.co-username, span[data-test="username"], [data-test="username"]').forEach(el => {
+					el.style.filter = 'blur(5px)';
+					el.style.userSelect = 'none';
+				});
+			};
+			
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', () => {
+					applyBlur();
+					new MutationObserver(applyBlur).observe(document.documentElement, { 
+						childList: true, 
+						subtree: true 
+					});
+				});
+			} else {
+				applyBlur();
+				new MutationObserver(applyBlur).observe(document.documentElement, { 
+					childList: true, 
+					subtree: true 
+				});
+			}
+		`),
+	})
+	require.NoError(t, err)
 }

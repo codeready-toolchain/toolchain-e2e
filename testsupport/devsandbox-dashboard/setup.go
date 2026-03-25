@@ -2,6 +2,7 @@ package sandboxui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -15,6 +16,7 @@ import (
 const (
 	TestEnv = "ui-e2e-tests"
 	DevEnv  = "dev"
+	ProdEnv = "prod"
 )
 
 var (
@@ -62,8 +64,11 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	context, err := browser.NewContext(opts)
 	require.NoError(t, err)
 
-	// save trace
-	trace(t, context, testName)
+	// save trace only if not running in CI
+	// we do not want to expose sensitive information in CI
+	if artifactDir := os.Getenv("ARTIFACT_DIR"); artifactDir == "" { // not CI environment
+		trace(t, context, testName)
+	}
 
 	page, err := context.NewPage()
 	require.NoError(t, err)
@@ -73,9 +78,9 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	login := NewLoginPage(page, env)
 	login.Navigate(t, baseURL)
 
-	if env == DevEnv {
+	if env == DevEnv || env == ProdEnv {
 		// handle cookie consent
-		// on dev environment, the cookie consent appears after the login page is loaded
+		// on dev and prod environments, the cookie consent appears after the login page is loaded
 		handleCookiesConsent(t, page)
 	}
 

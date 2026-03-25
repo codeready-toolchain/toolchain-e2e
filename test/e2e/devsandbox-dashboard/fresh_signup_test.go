@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -51,6 +52,12 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 			// delete user signup
 			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
 			require.NoError(t, err)
+		}
+	} else if env == sandboxui.ProdEnv {
+		userSignup := sandboxui.GetUserSignupThroughKsctl(t, username)
+		if userSignup != nil {
+			// delete user signup
+			sandboxui.DeleteUserSignupThroughKsctl(t, username)
 		}
 	}
 }
@@ -132,10 +139,18 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
 		require.NoError(t, err)
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
+	} else if env == sandboxui.ProdEnv {
+		// delete user signup through ksctl
+		t.Cleanup(func() {
+			sandboxui.DeleteUserSignupThroughKsctl(t, username)
+		})
 	}
 
 	// wait for loading icon to disappear
-	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{State: playwright.WaitForSelectorStateHidden})
+	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateHidden,
+		Timeout: playwright.Float(60000), // 1 minute timeout
+	})
 	require.NoError(t, err)
 
 	// wait for network to be idle (ensures all updates are complete)
@@ -187,23 +202,45 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName st
 	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(t, page, tryItBtn, testName)
 	require.NoError(t, err)
 
-	img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
-		Name: imgName,
-	})
-	err = img.WaitFor(playwright.LocatorWaitForOptions{
-		Timeout: playwright.Float(30000),
-	})
-	require.NoError(t, err)
+	if env == sandboxui.ProdEnv {
+		// Wait for auth redirect to complete
+		if strings.Contains(devSandboxPage.URL(), "/oauth/authorize") {
+			err := devSandboxPage.WaitForURL("**/k8s/cluster/projects/**", playwright.PageWaitForURLOptions{
+				Timeout: playwright.Float(30000),
+			})
+			require.NoError(t, err)
+		}
 
-	h := devSandboxPage.GetByRole("heading", playwright.PageGetByRoleOptions{})
-	hText, err := h.TextContent()
-	require.NoError(t, err)
-	require.Contains(t, hText, logMessage)
+		// Wait for modal
+		modal := devSandboxPage.Locator("[data-test='guided-tour-modal']")
+		err = modal.WaitFor(playwright.LocatorWaitForOptions{
+			State:   playwright.WaitForSelectorStateVisible,
+			Timeout: playwright.Float(180000), // 3 minutes
+		})
+		require.NoError(t, err)
 
-	list := devSandboxPage.GetByRole("list", playwright.PageGetByRoleOptions{})
-	listText, err := list.TextContent()
-	require.NoError(t, err)
-	require.Contains(t, listText, "DevSandbox")
+		modalText, err := modal.TextContent()
+		require.NoError(t, err)
+		require.Contains(t, modalText, "Welcome to the new OpenShift experience!")
+	} else {
+		img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
+			Name: imgName,
+		})
+		err = img.WaitFor(playwright.LocatorWaitForOptions{
+			Timeout: playwright.Float(30000),
+		})
+		require.NoError(t, err)
+
+		h := devSandboxPage.GetByRole("heading", playwright.PageGetByRoleOptions{})
+		hText, err := h.TextContent()
+		require.NoError(t, err)
+		require.Contains(t, hText, logMessage)
+
+		list := devSandboxPage.GetByRole("list", playwright.PageGetByRoleOptions{})
+		listText, err := list.TextContent()
+		require.NoError(t, err)
+		require.Contains(t, listText, "DevSandbox")
+	}
 
 	require.NoError(t, devSandboxPage.Close())
 }
