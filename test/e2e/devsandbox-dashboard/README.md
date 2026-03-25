@@ -33,6 +33,9 @@ If you want to use your local devsandbox-dashboard, please:
 
 `make test-devsandbox-dashboard-e2e-prod SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} KUBECONFIG=${KUBECONFIG}`
 
+The Developer Sandbox Dashboard E2E tests will run against the production environment at `https://sandbox.redhat.com/`. Note that this requires `ksctl` to manage usersignups in production.
+
+
 ## Deploy Developer Sandbox Dashboard in E2E mode
 
 Please note that OCP cluster does not have a valid CA, so when accessing the Developer Sandbox Dashboard, you need to:
