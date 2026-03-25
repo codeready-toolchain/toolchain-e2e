@@ -41,7 +41,8 @@ func TestFreshSignup(t *testing.T) {
 }
 
 func ensureNoUserSignup(t *testing.T, env, username string) {
-	if env == sandboxui.TestEnv {
+	switch env {
+	case sandboxui.TestEnv:
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
@@ -53,7 +54,7 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
 			require.NoError(t, err)
 		}
-	} else if env == sandboxui.ProdEnv {
+	case sandboxui.ProdEnv:
 		userSignup := sandboxui.GetUserSignupThroughKsctl(t, username)
 		if userSignup != nil {
 			// delete user signup
@@ -132,14 +133,15 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 	err = tryItButton.Click()
 	require.NoError(t, err)
 
-	if env == sandboxui.TestEnv {
+	switch env {
+	case sandboxui.TestEnv:
 		// add signup to cleanup
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
 		require.NoError(t, err)
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-	} else if env == sandboxui.ProdEnv {
+	case sandboxui.ProdEnv:
 		// delete user signup through ksctl
 		t.Cleanup(func() {
 			sandboxui.DeleteUserSignupThroughKsctl(t, username)

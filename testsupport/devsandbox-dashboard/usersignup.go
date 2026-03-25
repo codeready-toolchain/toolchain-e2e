@@ -16,6 +16,10 @@ import (
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
 )
 
+const (
+	configFlag = "--config"
+)
+
 // WaitForUserSignup retrieves the UserSignup for the configured SSO username
 func WaitForUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) (*toolchainv1alpha1.UserSignup, error) {
 	return hostAwait.WithRetryOptions(wait.TimeoutOption(time.Minute*2)).WaitForUserSignup(t, username,
@@ -45,7 +49,7 @@ func GetUserSignupThroughKsctl(t *testing.T, username string) *toolchainv1alpha1
 	t.Logf("Getting UserSignup through ksctl")
 
 	// #nosec G204 -- username is from test config, not user input
-	cmd := exec.Command("ksctl", "get", "usersignup", username, "--config", viper.GetString("KUBECONFIG"), "-t", "host", "-o", "yaml")
+	cmd := exec.Command("ksctl", "get", "usersignup", username, configFlag, viper.GetString("KUBECONFIG"), "-t", "host", "-o", "yaml")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Check if it's a not found error
@@ -67,7 +71,7 @@ func DeleteUserSignupThroughKsctl(t *testing.T, username string) {
 	t.Log("Deleting UserSignup through ksctl")
 
 	// #nosec G204 -- username is from test config, not user input
-	cmd := exec.Command("ksctl", "gdpr-delete", username, "--config", viper.GetString("KUBECONFIG"))
+	cmd := exec.Command("ksctl", "gdpr-delete", username, configFlag, viper.GetString("KUBECONFIG"))
 	cmd.Stdin = strings.NewReader("y\n") // confirm deletion
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err)
@@ -78,10 +82,10 @@ func DeleteUserSignupThroughKsctl(t *testing.T, username string) {
 	err = k8swait.PollUntilContextTimeout(context.TODO(), time.Second, 2*time.Minute, true,
 		func(ctx context.Context) (done bool, err error) {
 			// #nosec G204 -- username is from test config, not user input
-			cmd := exec.Command("ksctl", "get", "usersignup", username, "--config", viper.GetString("KUBECONFIG"), "-t", "host", "-o", "yaml")
+			cmd := exec.Command("ksctl", "get", "usersignup", username, configFlag, viper.GetString("KUBECONFIG"), "-t", "host", "-o", "yaml")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
-				// Check if error is because it's not found
+				// Check if it's a not found error
 				if strings.Contains(string(output), "not found") || strings.Contains(err.Error(), "not found") {
 					t.Log("UserSignup successfully deleted")
 					return true, nil

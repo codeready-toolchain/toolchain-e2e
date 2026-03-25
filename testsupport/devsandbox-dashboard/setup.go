@@ -66,7 +66,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 
 	// save trace only if not running in CI
 	// we do not want to expose sensitive information in CI
-	if artifactDir := os.Getenv("ARTIFACT_DIR"); artifactDir == "" { // not CI environment
+	if os.Getenv("ARTIFACT_DIR") == "" { // not CI environment
 		trace(t, context, testName)
 	}
 
