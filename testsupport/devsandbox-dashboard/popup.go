@@ -16,6 +16,8 @@ func ClickAndWaitForPopup(t *testing.T, currentPage playwright.Page, locator pla
 	var popup playwright.Page
 	var err error
 
+	maskUsername(t, currentPage)
+
 	pollErr := wait.PollUntilContextTimeout(context.TODO(), time.Millisecond, 1*time.Minute, true, func(ctx context.Context) (bool, error) {
 		popup, err = currentPage.ExpectPopup(func() error {
 			return locator.Click()
