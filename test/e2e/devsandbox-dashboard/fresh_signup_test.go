@@ -1,9 +1,13 @@
 package sandboxui
 
 import (
+	"context"
+	"errors"
 	"regexp"
 	"testing"
 
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
 	"github.com/playwright-community/playwright-go"
 	"github.com/spf13/viper"
@@ -11,11 +15,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHomepage tests the homepage layout and welcome text
-// when the user accesses the Developer Sandbox Dashboard for the first time
-func TestHomepage(t *testing.T) {
-	page := sandboxui.Setup(t, "test-homepage")
+// TestFreshSignup tests the complete fresh signup flow:
+// 1. Homepage layout when first accessing the dashboard
+// 2. Clicking "Try it" to signup
+// 3. Accessing OpenShift after signup
+func TestFreshSignup(t *testing.T) {
+	// Step 1: Setup the browser and login (LoadConfig called inside Setup)
+	testName := "test-fresh-signup"
+	page := sandboxui.Setup(t, testName)
 
+	// Ensure the user signup is not present in the system
+	env := viper.GetString("ENVIRONMENT")
+	username := viper.GetString("SSO_USERNAME")
+	ensureNoUserSignup(t, env, username)
+
+	// Step 2: Verify homepage layout on first access
+	verifyHomepage(t, page)
+
+	// Step 3: Perform signup by clicking "Try it"
+	performSignup(t, page, env, username)
+
+	// Step 4: Verify OpenShift access
+	verifyDevSandboxAccess(t, page, env, testName)
+}
+
+func ensureNoUserSignup(t *testing.T, env, username string) {
+	if env == sandboxui.TestEnv {
+		awaitilities := testsupport.WaitForDeployments(t)
+		hostAwait := awaitilities.Host()
+		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			require.NoError(t, err) // fail on unexpected errors
+		}
+		if userSignup != nil {
+			// delete user signup
+			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
+			require.NoError(t, err)
+		}
+	}
+}
+
+// verifyHomepage checks the homepage layout and welcome text
+// when the user accesses the Developer Sandbox Dashboard for the first time
+func verifyHomepage(t *testing.T, page playwright.Page) {
 	homeLink := page.Locator("a").Filter(playwright.LocatorFilterOptions{
 		HasText: "Home",
 	})
@@ -43,11 +85,9 @@ func TestHomepage(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestSignup tests the signup flow (automatically approved)
-// when the user clicks on "Try it" for the first time
-func TestSignup(t *testing.T) {
-	page := sandboxui.Setup(t, "test-signup")
-
+// performSignup executes the signup flow by clicking "Try it"
+// and waits for the signup to be approved
+func performSignup(t *testing.T, page playwright.Page, env, username string) {
 	article := page.GetByRole("article")
 	loadingIcon := page.Locator("svg.v5-MuiCircularProgress-svg").First()
 
@@ -85,6 +125,15 @@ func TestSignup(t *testing.T) {
 	err = tryItButton.Click()
 	require.NoError(t, err)
 
+	if env == sandboxui.TestEnv {
+		// add signup to cleanup
+		awaitilities := testsupport.WaitForDeployments(t)
+		hostAwait := awaitilities.Host()
+		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
+		require.NoError(t, err)
+		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
+	}
+
 	// wait for loading icon to disappear
 	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{State: playwright.WaitForSelectorStateHidden})
 	require.NoError(t, err)
@@ -100,18 +149,17 @@ func TestSignup(t *testing.T) {
 	require.NoError(t, err)
 
 	trialText := article.GetByText("Your free trial expires in 30 days")
-	err = trialText.WaitFor()
+	err = trialText.WaitFor(playwright.LocatorWaitForOptions{
+		Timeout: playwright.Float(30000),
+	})
 	require.NoError(t, err)
 }
 
-// TestDevSandbox tests the access to Openshift after the user is signed up
-func TestDevSandbox(t *testing.T) {
-	page := sandboxui.Setup(t, "test-devsandbox")
-	env := viper.GetString("ENVIRONMENT")
-
+// verifyDevSandboxAccess tests access to OpenShift after the user is signed up
+func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName string) {
 	imgName := "Red Hat OpenShift Service on"
 	logMessage := "Log in with…"
-	if env == sandboxui.UIE2ETestsEnv {
+	if env == sandboxui.TestEnv {
 		imgName = "Red Hat OpenShift"
 		logMessage = "Log in with"
 	}
@@ -135,14 +183,16 @@ func TestDevSandbox(t *testing.T) {
 
 	sandboxui.IsVisible(t, tryItBtn)
 
-	// open the article in a new popup and wait for it to fully load
-	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(page, tryItBtn)
+	// open the "Try it" button in a new popup and wait for it to fully load
+	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(t, page, tryItBtn, testName)
 	require.NoError(t, err)
 
 	img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
 		Name: imgName,
 	})
-	err = img.WaitFor()
+	err = img.WaitFor(playwright.LocatorWaitForOptions{
+		Timeout: playwright.Float(30000),
+	})
 	require.NoError(t, err)
 
 	h := devSandboxPage.GetByRole("heading", playwright.PageGetByRoleOptions{})

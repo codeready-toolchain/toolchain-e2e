@@ -12,7 +12,8 @@ import (
 
 // TestActivitiesPage opens and verifies that activities cards links are not broken
 func TestActivitiesPage(t *testing.T) {
-	page := sandboxui.Setup(t, "test-activities-page")
+	testName := "test-activities-page"
+	page := sandboxui.Setup(t, testName)
 
 	// navigate to 'Activities' link
 	activitiesLink := page.GetByRole("link", playwright.PageGetByRoleOptions{
@@ -40,7 +41,7 @@ func TestActivitiesPage(t *testing.T) {
 		Level: playwright.Int(5),
 	})
 
-	//wait for the 6th card (index 5) to appear - if it's there, all 6 are loaded
+	// wait for the 6th card (index 5) to appear - if it's there, all 6 are loaded
 	err = cards.Nth(5).WaitFor()
 	require.NoError(t, err)
 
@@ -56,7 +57,7 @@ func TestActivitiesPage(t *testing.T) {
 		require.NoError(t, err)
 
 		// open the article in a new popup and wait for it to fully load
-		popup, err := sandboxui.ClickAndWaitForPopup(page, article)
+		popup, err := sandboxui.ClickAndWaitForPopup(t, page, article, testName)
 		require.NoError(t, err)
 
 		// assert the popup heading matches the expected article title
