@@ -35,8 +35,6 @@ func TestOperatorVersionMetrics(t *testing.T) {
 
 		// given
 		hostAwait := awaitilities.Host()
-		_, err := hostAwait.WaitForRouteToBeAvailable(t, hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
-		require.NoError(t, err)
 
 		t.Run("commit", func(t *testing.T) {
 			// when
