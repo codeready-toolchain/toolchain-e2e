@@ -215,7 +215,9 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 			},
 		)
 		require.NoError(t, err)
-		initHostAwait.MetricsURL = "https://" + hostMetricsRoute.Status.Ingress[0].Host
+		if len(hostMetricsRoute.Status.Ingress) > 0 {
+			initHostAwait.MetricsURL = "https://" + hostMetricsRoute.Status.Ingress[0].Host
+		}
 		t.Logf("host metrics URL: %s", initHostAwait.MetricsURL)
 
 		// setup registration service metrics route for metrics verification in tests
@@ -228,7 +230,9 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 			},
 		)
 		require.NoError(t, err)
-		initHostAwait.RegistrationServiceMetricsURL = "https://" + registrationServiceMetricsRoute.Status.Ingress[0].Host
+		if len(registrationServiceMetricsRoute.Status.Ingress) > 0 {
+			initHostAwait.RegistrationServiceMetricsURL = "https://" + registrationServiceMetricsRoute.Status.Ingress[0].Host
+		}
 		t.Logf("registration service metrics URL: %s", initHostAwait.RegistrationServiceMetricsURL)
 
 		// setup member metrics route for metrics verification in tests
@@ -241,7 +245,9 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 			},
 		)
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
-		initMemberAwait.MetricsURL = "https://" + memberMetricsRoute.Status.Ingress[0].Host
+		if len(memberMetricsRoute.Status.Ingress) > 0 {
+			initMemberAwait.MetricsURL = "https://" + memberMetricsRoute.Status.Ingress[0].Host
+		}
 		t.Logf("member metrics URL: %s", initMemberAwait.MetricsURL)
 
 		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2

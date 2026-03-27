@@ -72,7 +72,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 	t.Run("member-operators", func(t *testing.T) {
 		// given
 		member1Await := awaitilities.Member1()
-		member2Await := awaitilities.Member1()
+		member2Await := awaitilities.Member2()
 		// member metrics should be available at this point
 		member1Await.InitMetrics(t)
 		member2Await.InitMetrics(t)
@@ -103,7 +103,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 
 		// given
 		hostAwait := awaitilities.Host()
-		_, err := hostAwait.WaitForRouteToBeAvailable(t, hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
+		_, err := hostAwait.WaitForRouteToBeAvailable(t, hostAwait.Namespace, "registration-service-metrics-service", "/metrics")
 		require.NoError(t, err)
 
 		t.Run("commit", func(t *testing.T) {
