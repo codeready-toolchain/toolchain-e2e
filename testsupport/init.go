@@ -255,6 +255,19 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		if IsSecondMemberMode(t) {
 			err = initMember2Await.WaitUntilWebhookDeleted(t) // webhook on member2 should be deleted
 			require.NoError(t, err)
+			memberMetricsRoute, err := initMember2Await.SetupRouteForService(t, "member-operator-metrics-service", "/metrics",
+				&routev1.RoutePort{
+					TargetPort: intstr.FromString("https"),
+				},
+				&routev1.TLSConfig{
+					Termination: routev1.TLSTerminationPassthrough,
+				},
+			)
+			require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
+			require.NotEmpty(t, memberMetricsRoute.Status.Ingress, "route has no ingress status for member metrics service")
+			initMember2Await.MetricsURL = "https://" + memberMetricsRoute.Status.Ingress[0].Host
+			t.Logf("member metrics URL: %s", initMember2Await.MetricsURL)
+
 		}
 		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 
