@@ -58,9 +58,10 @@ var (
 // HostAwaitility the Awaitility for the Host cluster
 type HostAwaitility struct {
 	*Awaitility
-	RegistrationServiceNs  string
-	RegistrationServiceURL string
-	APIProxyURL            string
+	RegistrationServiceNs         string
+	RegistrationServiceURL        string
+	RegistrationServiceMetricsURL string
+	APIProxyURL                   string
 }
 
 // NewHostAwaitility initializes a HostAwaitility
@@ -81,10 +82,11 @@ func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrati
 // WithRetryOptions returns a new HostAwaitility with the given RetryOptions applied
 func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
-		Awaitility:             a.Awaitility.WithRetryOptions(options...),
-		RegistrationServiceNs:  a.RegistrationServiceNs,
-		RegistrationServiceURL: a.RegistrationServiceURL,
-		APIProxyURL:            a.APIProxyURL,
+		Awaitility:                    a.Awaitility.WithRetryOptions(options...),
+		RegistrationServiceNs:         a.RegistrationServiceNs,
+		RegistrationServiceURL:        a.RegistrationServiceURL,
+		RegistrationServiceMetricsURL: a.RegistrationServiceMetricsURL,
+		APIProxyURL:                   a.APIProxyURL,
 	}
 }
 
@@ -111,7 +113,12 @@ const (
 
 	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
 
-	HostOperatorVersionMetric = "sandbox_host_operator_version"
+	HostOperatorVersionMetric     = "sandbox_host_operator_version" // DEPRECATED: use HostOperatorCommitMetric instead
+	HostOperatorCommitMetric      = "sandbox_host_operator_commit"
+	HostOperatorShortCommitMetric = "sandbox_host_operator_short_commit"
+
+	RegistrationServiceCommitMetric      = "sandbox_registration_service_commit"
+	RegistrationServiceShortCommitMetric = "sandbox_registration_service_short_commit"
 
 	SignupProvisionTimeMetric = "sandbox_user_signup_provision_time"
 )

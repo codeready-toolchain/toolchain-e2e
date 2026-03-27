@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -205,14 +206,46 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		require.NoError(t, err, "failed to find proxy metrics service")
 
 		// setup host metrics route for metrics verification in tests
-		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
+		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics",
+			&routev1.RoutePort{
+				TargetPort: intstr.FromString("https"),
+			},
+			&routev1.TLSConfig{
+				Termination: routev1.TLSTerminationPassthrough,
+			},
+		)
 		require.NoError(t, err)
+		require.NotEmpty(t, hostMetricsRoute.Status.Ingress, "route has no ingress status for host metrics service")
 		initHostAwait.MetricsURL = "https://" + hostMetricsRoute.Status.Ingress[0].Host
+		t.Logf("host metrics URL: %s", initHostAwait.MetricsURL)
+
+		// setup registration service metrics route for metrics verification in tests
+		registrationServiceMetricsRoute, err := initHostAwait.SetupRouteForService(t, "registration-service-metrics", "/metrics",
+			&routev1.RoutePort{
+				TargetPort: intstr.FromString("regsvc-metrics"),
+			},
+			&routev1.TLSConfig{
+				Termination: routev1.TLSTerminationEdge,
+			},
+		)
+		require.NoError(t, err)
+		require.NotEmpty(t, registrationServiceMetricsRoute.Status.Ingress, "route has no ingress status for registration service metrics service")
+		initHostAwait.RegistrationServiceMetricsURL = "https://" + registrationServiceMetricsRoute.Status.Ingress[0].Host
+		t.Logf("registration service metrics URL: %s", initHostAwait.RegistrationServiceMetricsURL)
 
 		// setup member metrics route for metrics verification in tests
-		memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
+		memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics",
+			&routev1.RoutePort{
+				TargetPort: intstr.FromString("https"),
+			},
+			&routev1.TLSConfig{
+				Termination: routev1.TLSTerminationPassthrough,
+			},
+		)
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
+		require.NotEmpty(t, memberMetricsRoute.Status.Ingress, "route has no ingress status for member metrics service")
 		initMemberAwait.MetricsURL = "https://" + memberMetricsRoute.Status.Ingress[0].Host
+		t.Logf("member metrics URL: %s", initMemberAwait.MetricsURL)
 
 		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
 		// (we can't deploy the same webhook multiple times on the same cluster)
@@ -222,6 +255,19 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		if IsSecondMemberMode(t) {
 			err = initMember2Await.WaitUntilWebhookDeleted(t) // webhook on member2 should be deleted
 			require.NoError(t, err)
+			memberMetricsRoute, err := initMember2Await.SetupRouteForService(t, "member-operator-metrics-service", "/metrics",
+				&routev1.RoutePort{
+					TargetPort: intstr.FromString("https"),
+				},
+				&routev1.TLSConfig{
+					Termination: routev1.TLSTerminationPassthrough,
+				},
+			)
+			require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
+			require.NotEmpty(t, memberMetricsRoute.Status.Ingress, "route has no ingress status for member metrics service")
+			initMember2Await.MetricsURL = "https://" + memberMetricsRoute.Status.Ingress[0].Host
+			t.Logf("member metrics URL: %s", initMember2Await.MetricsURL)
+
 		}
 		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 

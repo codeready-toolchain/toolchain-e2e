@@ -23,14 +23,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
-	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -73,25 +70,8 @@ func TestRegistrationServiceMetricsEndpoint(t *testing.T) {
 
 	t.Run("available from a custom route", func(t *testing.T) { // create a route for to expose the `registration-service-metrics` svc
 		// given
-		route := &routev1.Route{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: await.Host().Namespace,
-				Name:      "registration-service-metrics",
-			},
-			Spec: routev1.RouteSpec{
-				To: routev1.RouteTargetReference{
-					Kind: "Service",
-					Name: "registration-service-metrics",
-				},
-				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("regsvc-metrics"),
-				},
-			},
-		}
-		err := await.Host().CreateWithCleanup(t, route)
-		require.NoError(t, err)
-		_, err = await.Host().WaitForRouteToBeAvailable(t, route.Namespace, route.Name, "/metrics")
-		require.NoError(t, err, "route not available", route)
+		route, err := await.Host().WaitForRouteToBeAvailable(t, await.Host().Namespace, "registration-service-metrics", "/metrics")
+		require.NoError(t, err, "route not available", "registration-service-metrics")
 
 		req, err := http.NewRequest("GET", "http://"+route.Spec.Host+"/metrics", nil)
 		require.NoError(t, err)
