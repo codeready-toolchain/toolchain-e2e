@@ -81,18 +81,10 @@ func DeleteUserSignupThroughKsctl(t *testing.T, username string) {
 	t.Log("Waiting for UserSignup to be completely deleted")
 	err = k8swait.PollUntilContextTimeout(context.TODO(), time.Second, 2*time.Minute, true,
 		func(ctx context.Context) (done bool, err error) {
-			// #nosec G204 -- username is from test config, not user input
-			cmd := exec.Command("ksctl", "get", "usersignup", username, configFlag, viper.GetString("KUBECONFIG"), "-t", "host", "-o", "yaml")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				// Check if it's a not found error
-				if strings.Contains(string(output), "not found") || strings.Contains(err.Error(), "not found") {
-					t.Log("UserSignup successfully deleted")
-					return true, nil
-				}
-				// Some other error, keep trying
-				t.Log("Error checking UserSignup deletion")
-				return false, nil
+			userSignup := GetUserSignupThroughKsctl(t, username)
+			if userSignup == nil {
+				t.Log("UserSignup successfully deleted")
+				return true, nil
 			}
 			// Still exists
 			return false, nil

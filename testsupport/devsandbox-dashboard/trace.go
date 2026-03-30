@@ -93,33 +93,3 @@ func buildPopupVideoPath(targetPath, videoPath string) string {
 	}
 	return strings.Replace(targetPath, "popup", fmt.Sprintf("popup-%s", uuid), 1)
 }
-
-func maskUsername(t *testing.T, page playwright.Page) {
-	err := page.Context().AddInitScript(playwright.Script{
-		Content: playwright.String(`
-			const applyBlur = () => {
-				document.querySelectorAll('input[name="username"], span.co-username, span[data-test="username"], [data-test="username"]').forEach(el => {
-					el.style.filter = 'blur(5px)';
-					el.style.userSelect = 'none';
-				});
-			};
-			
-			if (document.readyState === 'loading') {
-				document.addEventListener('DOMContentLoaded', () => {
-					applyBlur();
-					new MutationObserver(applyBlur).observe(document.documentElement, { 
-						childList: true, 
-						subtree: true 
-					});
-				});
-			} else {
-				applyBlur();
-				new MutationObserver(applyBlur).observe(document.documentElement, { 
-					childList: true, 
-					subtree: true 
-				});
-			}
-		`),
-	})
-	require.NoError(t, err)
-}

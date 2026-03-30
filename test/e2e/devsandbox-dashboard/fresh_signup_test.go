@@ -213,17 +213,13 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName st
 			require.NoError(t, err)
 		}
 
-		// Wait for modal
-		modal := devSandboxPage.Locator("[data-test='guided-tour-modal']")
-		err = modal.WaitFor(playwright.LocatorWaitForOptions{
+		// Find welcome text and wait for it to be visible
+		welcomeText := devSandboxPage.GetByText("Welcome to the new OpenShift experience!")
+		err = welcomeText.WaitFor(playwright.LocatorWaitForOptions{
 			State:   playwright.WaitForSelectorStateVisible,
 			Timeout: playwright.Float(180000), // 3 minutes
 		})
 		require.NoError(t, err)
-
-		modalText, err := modal.TextContent()
-		require.NoError(t, err)
-		require.Contains(t, modalText, "Welcome to the new OpenShift experience!")
 	} else {
 		img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
 			Name: imgName,

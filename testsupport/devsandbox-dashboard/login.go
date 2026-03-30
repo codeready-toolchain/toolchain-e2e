@@ -59,8 +59,6 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 }
 
 func (lp *LoginPage) Navigate(t *testing.T, url string) {
-	maskUsername(t, lp.Page)
-
 	_, err := lp.Page.Goto(url, playwright.PageGotoOptions{
 		Timeout: playwright.Float(60000), // 1 minute timeout
 	})
