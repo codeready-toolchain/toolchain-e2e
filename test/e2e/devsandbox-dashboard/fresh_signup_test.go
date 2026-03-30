@@ -28,7 +28,7 @@ func TestFreshSignup(t *testing.T) {
 	// Ensure the user signup is not present in the system
 	env := viper.GetString("ENVIRONMENT")
 	username := viper.GetString("SSO_USERNAME")
-	ensureNoUserSignup(t, env, username)
+	ensureNoUserSignup(t, page, env, username)
 
 	// Step 2: Verify homepage layout on first access
 	verifyHomepage(t, page)
@@ -40,7 +40,7 @@ func TestFreshSignup(t *testing.T) {
 	verifyDevSandboxAccess(t, page, env, testName)
 }
 
-func ensureNoUserSignup(t *testing.T, env, username string) {
+func ensureNoUserSignup(t *testing.T, page playwright.Page, env, username string) {
 	switch env {
 	case sandboxui.TestEnv:
 		awaitilities := testsupport.WaitForDeployments(t)
@@ -53,12 +53,16 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 			// delete user signup
 			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
 			require.NoError(t, err)
+			_, err = page.Reload()
+			require.NoError(t, err)
 		}
 	case sandboxui.ProdEnv:
 		userSignup := sandboxui.GetUserSignupThroughKsctl(t, username)
 		if userSignup != nil {
 			// delete user signup
 			sandboxui.DeleteUserSignupThroughKsctl(t, username)
+			_, err := page.Reload()
+			require.NoError(t, err)
 		}
 	}
 }
