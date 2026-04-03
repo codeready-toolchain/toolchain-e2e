@@ -73,7 +73,7 @@ func TestRegistrationServiceMetricsEndpoint(t *testing.T) {
 		route, err := await.Host().WaitForRouteToBeAvailable(t, await.Host().Namespace, "registration-service-metrics", "/metrics")
 		require.NoError(t, err, "route not available", "registration-service-metrics")
 
-		req, err := http.NewRequest("GET", "http://"+route.Spec.Host+"/metrics", nil)
+		req, err := http.NewRequest("GET", "https://"+route.Spec.Host+"/metrics", nil)
 		require.NoError(t, err)
 		// when
 		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
