@@ -96,7 +96,8 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 
 	// check cards
 	cardsToCheck := []string{
-		"OpenShift AI Scalable AI and",
+		// SANDBOX-1755: OpenShift AI temporarily disabled
+		// "OpenShift AI Scalable AI and",
 		"Dev Spaces Cloud Development",
 		"Ansible Automation Platform Scalable, centralized automation solution Available",
 		"OpenShift Virtualization Migrate traditional VM workloads to OpenShift Unified",
