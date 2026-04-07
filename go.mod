@@ -149,4 +149,4 @@ tool github.com/playwright-community/playwright-go/cmd/playwright
 
 replace github.com/codeready-toolchain/api => github.com/metlos/api v0.0.0-20260318102359-237e681a639a
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20260318113116-fbd4bba9beb1
+replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20260407101204-7a27a3b307f9
