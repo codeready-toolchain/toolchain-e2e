@@ -21,7 +21,8 @@ import (
 // 3. Accessing OpenShift after signup
 func TestFreshSignup(t *testing.T) {
 	// Step 1: Setup the browser and login (LoadConfig called inside Setup)
-	page := sandboxui.Setup(t, "test-fresh-signup")
+	testName := "test-fresh-signup"
+	page := sandboxui.Setup(t, testName)
 
 	// Ensure the user signup is not present in the system
 	env := viper.GetString("ENVIRONMENT")
@@ -35,7 +36,7 @@ func TestFreshSignup(t *testing.T) {
 	performSignup(t, page, env, username)
 
 	// Step 4: Verify OpenShift access
-	verifyDevSandboxAccess(t, page, env)
+	verifyDevSandboxAccess(t, page, env, testName)
 }
 
 func ensureNoUserSignup(t *testing.T, env, username string) {
@@ -95,7 +96,8 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 
 	// check cards
 	cardsToCheck := []string{
-		"OpenShift AI Scalable AI and",
+		// SANDBOX-1755: OpenShift AI temporarily disabled
+		// "OpenShift AI Scalable AI and",
 		"Dev Spaces Cloud Development",
 		"Ansible Automation Platform Scalable, centralized automation solution Available",
 		"OpenShift Virtualization Migrate traditional VM workloads to OpenShift Unified",
@@ -155,7 +157,7 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 }
 
 // verifyDevSandboxAccess tests access to OpenShift after the user is signed up
-func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env string) {
+func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName string) {
 	imgName := "Red Hat OpenShift Service on"
 	logMessage := "Log in with…"
 	if env == sandboxui.TestEnv {
@@ -183,7 +185,7 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env string) {
 	sandboxui.IsVisible(t, tryItBtn)
 
 	// open the "Try it" button in a new popup and wait for it to fully load
-	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(page, tryItBtn)
+	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(t, page, tryItBtn, testName)
 	require.NoError(t, err)
 
 	img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
