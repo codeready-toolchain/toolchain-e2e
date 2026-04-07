@@ -178,8 +178,8 @@ github.com/mattn/go-runewidth v0.0.7 h1:Ei8KR0497xHyKJPAv59M1dkC+rOZCMBJ+t3fZ+tw
 github.com/mattn/go-runewidth v0.0.7/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
 github.com/metlos/api v0.0.0-20260318102359-237e681a639a h1:623z9TxSwryuiPqdsDGmho3OFHYTXwP68gqMwkIL4EA=
 github.com/metlos/api v0.0.0-20260318102359-237e681a639a/go.mod h1:AGEED+QcaXFa32pulan2/QBB+hzQXzPy/BEUCvqy4EE=
-github.com/metlos/toolchain-common v0.0.0-20260318113116-fbd4bba9beb1 h1:vVaPnNW0m+zNyKRYe/ejQafcifk8R1wPL1Q1cX6LKqo=
-github.com/metlos/toolchain-common v0.0.0-20260318113116-fbd4bba9beb1/go.mod h1:TmVuAlA+bawr/uO5rhaLJd1n2iM8PozcQEBgZ0jPS50=
+github.com/metlos/toolchain-common v0.0.0-20260407101204-7a27a3b307f9 h1:sMk+yTQlH+S2ml0pwbw9G133gvFc1wrmO3GxUa14hwE=
+github.com/metlos/toolchain-common v0.0.0-20260407101204-7a27a3b307f9/go.mod h1:KQ87vD9cqZ9Uo3C1QEg3/846kwr7tKX/zyK8v5xYNMk=
 github.com/migueleliasweb/go-github-mock v0.0.18 h1:0lWt9MYmZQGnQE2rFtjlft/YtD6hzxuN6JJRFpujzEI=
 github.com/migueleliasweb/go-github-mock v0.0.18/go.mod h1:CcgXcbMoRnf3rRVHqGssuBquZDIcaplxL2W6G+xs7kM=
 github.com/mitchellh/copystructure v1.0.0 h1:Laisrj+bAB6b/yJwB5Bt3ITZhGJdqmxquMKeZ+mmkFQ=
