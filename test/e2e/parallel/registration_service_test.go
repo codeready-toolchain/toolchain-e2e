@@ -1015,6 +1015,11 @@ func TestUIConfig(t *testing.T) {
 		workatoWebHookURL, ok := response["workatoWebHookURL"].(string)
 		require.True(t, ok)
 		assert.Equal(t, "https://webhooks.testwebhook", workatoWebHookURL)
+
+		// verify that disabledIntegrations is present and is an array
+		disabledIntegrations, ok := response["disabledIntegrations"]
+		require.True(t, ok, "disabledIntegrations field should be present in uiconfig response")
+		require.IsType(t, []interface{}{}, disabledIntegrations, "disabledIntegrations should be an array")
 	})
 }
 
