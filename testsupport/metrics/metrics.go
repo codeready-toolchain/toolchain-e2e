@@ -129,16 +129,14 @@ func getBuckets(t dto.MetricType, m *dto.Metric) (*[]*dto.Bucket, error) {
 
 // GetMetricLabels return all labels (indexed by key) for all metrics of the given `family`
 func GetMetricLabels(restConfig *rest.Config, baseURL string, family string) ([]map[string]string, error) {
-	uri := baseURL + "/metrics"
-	var metrics []byte
-
 	client := http.Client{
 		Timeout: time.Duration(30 * time.Second),
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		},
 	}
-	request, err := http.NewRequest("Get", uri, nil)
+	uri := baseURL + "/metrics"
+	request, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +148,7 @@ func GetMetricLabels(restConfig *rest.Config, baseURL string, family string) ([]
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	var metrics []byte
 	metrics, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

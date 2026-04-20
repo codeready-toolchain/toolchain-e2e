@@ -35,7 +35,7 @@ jobs:
     # If the workflow was triggered based on comment, then we need to get the information about the PR
     - name: Send Github API Request to get PR data
       id: request
-      uses: octokit/request-action@v2.4.0
+      uses: octokit/request-action@v3.0.0
       if: ${{ github.event_name == 'issue_comment' }}
       with:
         route: ${{ github.event.issue.pull_request.url }}

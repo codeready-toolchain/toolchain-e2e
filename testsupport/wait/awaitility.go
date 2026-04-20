@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/util/podutils"
@@ -210,8 +209,8 @@ func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, cdtype 
 // SetupRouteForService if needed, creates a route for the given service (with the same namespace/name)
 // It waits until the route is available (or returns an error) by first checking the resource status
 // and then making a call to the given endpoint
-func (a *Awaitility) SetupRouteForService(t *testing.T, serviceName, endpoint string) (routev1.Route, error) {
-	t.Logf("setting up route for service '%s' with endpoint '%s'", serviceName, endpoint)
+func (a *Awaitility) SetupRouteForService(t *testing.T, serviceName string, path string, port *routev1.RoutePort, tlsConfig *routev1.TLSConfig) (routev1.Route, error) {
+	t.Logf("setting up route for service '%s' with endpoint '%s'", serviceName, path)
 	service, err := a.WaitForService(t, serviceName)
 	if err != nil {
 		return routev1.Route{}, err
@@ -230,28 +229,24 @@ func (a *Awaitility) SetupRouteForService(t *testing.T, serviceName, endpoint st
 				Name:      service.Name,
 			},
 			Spec: routev1.RouteSpec{
-				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("https"),
-				},
-				TLS: &routev1.TLSConfig{
-					Termination: routev1.TLSTerminationPassthrough,
-				},
 				To: routev1.RouteTargetReference{
 					Kind: service.Kind,
 					Name: service.Name,
 				},
+				Port: port,
+				TLS:  tlsConfig,
 			},
 		}
 		if err = a.Client.Create(context.TODO(), &route); err != nil {
 			return route, err
 		}
 	}
-	return a.WaitForRouteToBeAvailable(t, route.Namespace, route.Name, endpoint)
+	return a.WaitForRouteToBeAvailable(t, route.Namespace, route.Name, path)
 }
 
 // WaitForRouteToBeAvailable waits until the given route is available, ie, it has an Ingress with a host configured
 // and the endpoint is reachable (with a `200 OK` status response)
-func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint string) (routev1.Route, error) {
+func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, path string) (routev1.Route, error) {
 	t.Logf("waiting for route '%s' in namespace '%s'", name, ns)
 	route := routev1.Route{}
 	// retrieve the route for the registration service
@@ -282,13 +277,13 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 					InsecureSkipVerify: true, // nolint:gosec
 				},
 			}
-			request, err = http.NewRequest("GET", "https://"+route.Status.Ingress[0].Host+endpoint, nil)
+			request, err = http.NewRequest("GET", "https://"+route.Status.Ingress[0].Host+path, nil)
 			if err != nil {
 				return false, err
 			}
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
 		} else {
-			request, err = http.NewRequest("GET", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
+			request, err = http.NewRequest("GET", "http://"+route.Status.Ingress[0].Host+path, nil)
 			if err != nil {
 				return false, err
 			}
@@ -335,8 +330,9 @@ func (a *Awaitility) GetHistogramValues(t *testing.T, family string, labelAndVal
 
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
-func (a *Awaitility) GetMetricLabels(t *testing.T, family string) []map[string]string {
-	labels, err := metrics.GetMetricLabels(a.RestConfig, a.MetricsURL, family)
+func (a *Awaitility) GetMetricLabels(t *testing.T, metricsURL, family string) []map[string]string {
+	t.Logf("getting labels for metric '%s' from '%s'", family, metricsURL)
+	labels, err := metrics.GetMetricLabels(a.RestConfig, metricsURL, family)
 	require.NoError(t, err)
 	return labels
 }
