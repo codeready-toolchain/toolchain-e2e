@@ -2,22 +2,17 @@ package sandboxui
 
 import (
 	"context"
-	"os/exec"
-	"strings"
 	"testing"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
-)
-
-const (
-	configFlag = "--config"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // WaitForUserSignup retrieves the UserSignup for the configured SSO username
@@ -45,43 +40,33 @@ func DeleteUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, userSignup *
 	return hostAwait.WaitUntilUserSignupDeleted(t, username)
 }
 
-func GetUserSignupThroughKsctl(t *testing.T, username string) *toolchainv1alpha1.UserSignup {
-	t.Logf("Getting UserSignup through ksctl")
+func GetUserSignupWithClient(t *testing.T, client client.Client, username string) *toolchainv1alpha1.UserSignup {
+	t.Logf("Getting UserSignup")
 
-	// #nosec G204 -- username is from test config, not user input
-	cmd := exec.Command("ksctl", "get", "usersignup", username, configFlag, viper.GetString("KUBECONFIG"), "-t", "host", "-o", "yaml")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		// Check if it's a not found error
-		if strings.Contains(string(output), "Error from server (NotFound)") {
-			return nil
-		}
-	}
-	require.NoError(t, err)
-
-	// parse the output as a UserSignup
 	userSignup := &toolchainv1alpha1.UserSignup{}
-	err = yaml.Unmarshal(output, userSignup)
+	err := client.Get(context.TODO(), types.NamespacedName{
+		Namespace: configuration.DefaultHostNS,
+		Name:      username,
+	}, userSignup)
+	if errors.IsNotFound(err) {
+		return nil
+	}
 	require.NoError(t, err)
 
 	return userSignup
 }
 
-func DeleteUserSignupThroughKsctl(t *testing.T, username string) {
-	t.Log("Deleting UserSignup through ksctl")
+func DeleteUserSignupWithClient(t *testing.T, client client.Client, userSignup *toolchainv1alpha1.UserSignup) {
+	t.Log("Deleting UserSignup")
 
-	// #nosec G204 -- username is from test config, not user input
-	cmd := exec.Command("ksctl", "gdpr-delete", username, configFlag, viper.GetString("KUBECONFIG"))
-	cmd.Stdin = strings.NewReader("y\n") // confirm deletion
-	output, err := cmd.CombinedOutput()
+	err := client.Delete(context.TODO(), userSignup)
 	require.NoError(t, err)
-	require.Contains(t, string(output), "The deletion of the UserSignup has been triggered")
 
 	// Wait until UserSignup is actually deleted
 	t.Log("Waiting for UserSignup to be completely deleted")
 	err = k8swait.PollUntilContextTimeout(context.TODO(), time.Second, 2*time.Minute, true,
 		func(ctx context.Context) (done bool, err error) {
-			userSignup := GetUserSignupThroughKsctl(t, username)
+			userSignup := GetUserSignupWithClient(t, client, userSignup.Name)
 			if userSignup == nil {
 				t.Log("UserSignup successfully deleted")
 				return true, nil
@@ -91,5 +76,5 @@ func DeleteUserSignupThroughKsctl(t *testing.T, username string) {
 		})
 	require.NoError(t, err, "UserSignup was not deleted within timeout")
 
-	t.Log("UserSignup deleted and confirmed through ksctl")
+	t.Log("UserSignup deleted")
 }

@@ -7,13 +7,16 @@ import (
 	"strings"
 	"testing"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
 	"github.com/playwright-community/playwright-go"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TestFreshSignup tests the complete fresh signup flow:
@@ -53,16 +56,18 @@ func ensureNoUserSignup(t *testing.T, page playwright.Page, env, username string
 			// delete user signup
 			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
 			require.NoError(t, err)
-			_, err = page.Reload()
-			require.NoError(t, err)
+			reloadPage(t, page)
 		}
 	case sandboxui.ProdEnv:
-		userSignup := sandboxui.GetUserSignupThroughKsctl(t, username)
+		client, err := newClient(t, viper.GetString("KUBECONFIG"))
+		require.NoError(t, err)
+
+		userSignup := sandboxui.GetUserSignupWithClient(t, client, username)
+
 		if userSignup != nil {
 			// delete user signup
-			sandboxui.DeleteUserSignupThroughKsctl(t, username)
-			_, err := page.Reload()
-			require.NoError(t, err)
+			sandboxui.DeleteUserSignupWithClient(t, client, userSignup)
+			reloadPage(t, page)
 		}
 	}
 }
@@ -138,20 +143,9 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 	err = tryItButton.Click()
 	require.NoError(t, err)
 
-	switch env {
-	case sandboxui.TestEnv:
-		// add signup to cleanup
-		awaitilities := testsupport.WaitForDeployments(t)
-		hostAwait := awaitilities.Host()
-		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
-		require.NoError(t, err)
-		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-	case sandboxui.ProdEnv:
-		// delete user signup through ksctl
-		t.Cleanup(func() {
-			sandboxui.DeleteUserSignupThroughKsctl(t, username)
-		})
-	}
+	t.Cleanup(func() {
+		ensureNoUserSignup(t, nil, env, username)
+	})
 
 	// wait for loading icon to disappear
 	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{
@@ -246,4 +240,23 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName st
 	}
 
 	require.NoError(t, devSandboxPage.Close())
+}
+
+func newClient(t *testing.T, kubeconfigPath string) (client.Client, error) {
+	require.NotEmpty(t, kubeconfigPath)
+
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	require.NoError(t, err)
+
+	s := runtime.NewScheme()
+	require.NoError(t, toolchainv1alpha1.AddToScheme(s))
+
+	return client.New(cfg, client.Options{Scheme: s})
+}
+
+func reloadPage(t *testing.T, page playwright.Page) {
+	if page != nil {
+		_, err := page.Reload()
+		require.NoError(t, err)
+	}
 }

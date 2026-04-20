@@ -102,7 +102,7 @@ endif
 
 # Run Developer Sandbox Dashboard e2e tests against prod
 .PHONY: test-devsandbox-dashboard-e2e-prod
-test-devsandbox-dashboard-e2e-prod: ksctl
+test-devsandbox-dashboard-e2e-prod:
 	@echo "Installing Firefox browser for Playwright..."
 	go tool playwright install firefox
 	
