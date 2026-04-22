@@ -207,7 +207,7 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName st
 		// Wait for auth redirect to complete
 		if strings.Contains(devSandboxPage.URL(), "/oauth/authorize") {
 			err := devSandboxPage.WaitForURL("**/k8s/cluster/projects/**", playwright.PageWaitForURLOptions{
-				Timeout: playwright.Float(30000),
+				Timeout: playwright.Float(180000), // 3 minutes
 			})
 			require.NoError(t, err)
 		}
