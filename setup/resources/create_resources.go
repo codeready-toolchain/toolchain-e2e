@@ -7,7 +7,6 @@ import (
 	ctemplate "github.com/codeready-toolchain/toolchain-common/pkg/template"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
-	"github.com/pkg/errors"
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,7 +25,7 @@ func CreateUserResourcesFromTemplateFiles(ctx context.Context, cl runtimeclient.
 		if _, ok := tmpls[templatePath]; !ok {
 			var err error
 			if tmpls[templatePath], err = templates.GetTemplateFromFile(templatePath); err != nil {
-				return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
+				return fmt.Errorf("invalid template file: '%s': %w", templatePath, err)
 			}
 		}
 		tmpl := tmpls[templatePath]
