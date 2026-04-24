@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 	"testing"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
 	"github.com/playwright-community/playwright-go"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TestFreshSignup tests the complete fresh signup flow:
@@ -27,7 +31,7 @@ func TestFreshSignup(t *testing.T) {
 	// Ensure the user signup is not present in the system
 	env := viper.GetString("ENVIRONMENT")
 	username := viper.GetString("SSO_USERNAME")
-	ensureNoUserSignup(t, env, username)
+	ensureNoUserSignup(t, page, env, username)
 
 	// Step 2: Verify homepage layout on first access
 	verifyHomepage(t, page)
@@ -39,8 +43,9 @@ func TestFreshSignup(t *testing.T) {
 	verifyDevSandboxAccess(t, page, env, testName)
 }
 
-func ensureNoUserSignup(t *testing.T, env, username string) {
-	if env == sandboxui.TestEnv {
+func ensureNoUserSignup(t *testing.T, page playwright.Page, env, username string) {
+	switch env {
+	case sandboxui.TestEnv:
 		awaitilities := testsupport.WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
@@ -51,6 +56,18 @@ func ensureNoUserSignup(t *testing.T, env, username string) {
 			// delete user signup
 			err := sandboxui.DeleteUserSignup(t, hostAwait, userSignup)
 			require.NoError(t, err)
+			reloadPage(t, page)
+		}
+	case sandboxui.ProdEnv:
+		client, err := newClient(t, viper.GetString("KUBECONFIG"))
+		require.NoError(t, err)
+
+		userSignup := sandboxui.GetUserSignupWithClient(t, client, username)
+
+		if userSignup != nil {
+			// delete user signup
+			sandboxui.DeleteUserSignupWithClient(t, client, userSignup)
+			reloadPage(t, page)
 		}
 	}
 }
@@ -126,17 +143,15 @@ func performSignup(t *testing.T, page playwright.Page, env, username string) {
 	err = tryItButton.Click()
 	require.NoError(t, err)
 
-	if env == sandboxui.TestEnv {
-		// add signup to cleanup
-		awaitilities := testsupport.WaitForDeployments(t)
-		hostAwait := awaitilities.Host()
-		userSignup, err := sandboxui.WaitForUserSignup(t, hostAwait, username)
-		require.NoError(t, err)
-		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-	}
+	t.Cleanup(func() {
+		ensureNoUserSignup(t, nil, env, username)
+	})
 
 	// wait for loading icon to disappear
-	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{State: playwright.WaitForSelectorStateHidden})
+	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{
+		State:   playwright.WaitForSelectorStateHidden,
+		Timeout: playwright.Float(60000), // 1 minute timeout
+	})
 	require.NoError(t, err)
 
 	// wait for network to be idle (ensures all updates are complete)
@@ -188,23 +203,60 @@ func verifyDevSandboxAccess(t *testing.T, page playwright.Page, env, testName st
 	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(t, page, tryItBtn, testName)
 	require.NoError(t, err)
 
-	img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
-		Name: imgName,
-	})
-	err = img.WaitFor(playwright.LocatorWaitForOptions{
-		Timeout: playwright.Float(30000),
-	})
-	require.NoError(t, err)
+	if env == sandboxui.ProdEnv {
+		// Wait for auth redirect to complete
+		if strings.Contains(devSandboxPage.URL(), "/oauth/authorize") {
+			err := devSandboxPage.WaitForURL("**/k8s/cluster/projects/**", playwright.PageWaitForURLOptions{
+				Timeout: playwright.Float(180000), // 3 minutes
+			})
+			require.NoError(t, err)
+		}
 
-	h := devSandboxPage.GetByRole("heading", playwright.PageGetByRoleOptions{})
-	hText, err := h.TextContent()
-	require.NoError(t, err)
-	require.Contains(t, hText, logMessage)
+		// Find welcome text and wait for it to be visible
+		welcomeText := devSandboxPage.GetByText("Welcome to the new OpenShift experience!")
+		err = welcomeText.WaitFor(playwright.LocatorWaitForOptions{
+			State:   playwright.WaitForSelectorStateVisible,
+			Timeout: playwright.Float(180000), // 3 minutes
+		})
+		require.NoError(t, err)
+	} else {
+		img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
+			Name: imgName,
+		})
+		err = img.WaitFor(playwright.LocatorWaitForOptions{
+			Timeout: playwright.Float(30000),
+		})
+		require.NoError(t, err)
 
-	list := devSandboxPage.GetByRole("list", playwright.PageGetByRoleOptions{})
-	listText, err := list.TextContent()
-	require.NoError(t, err)
-	require.Contains(t, listText, "DevSandbox")
+		h := devSandboxPage.GetByRole("heading", playwright.PageGetByRoleOptions{})
+		hText, err := h.TextContent()
+		require.NoError(t, err)
+		require.Contains(t, hText, logMessage)
+
+		list := devSandboxPage.GetByRole("list", playwright.PageGetByRoleOptions{})
+		listText, err := list.TextContent()
+		require.NoError(t, err)
+		require.Contains(t, listText, "DevSandbox")
+	}
 
 	require.NoError(t, devSandboxPage.Close())
+}
+
+func newClient(t *testing.T, kubeconfigPath string) (client.Client, error) {
+	require.NotEmpty(t, kubeconfigPath)
+
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	require.NoError(t, err)
+
+	s := runtime.NewScheme()
+	require.NoError(t, toolchainv1alpha1.AddToScheme(s))
+
+	return client.New(cfg, client.Options{Scheme: s})
+}
+
+func reloadPage(t *testing.T, page playwright.Page) {
+	if page != nil {
+		_, err := page.Reload()
+		require.NoError(t, err)
+	}
 }
