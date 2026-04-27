@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -9,7 +10,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +41,7 @@ func ForSpace(cl client.Client, space string) error {
 		}
 		return true, nil
 	}); err != nil {
-		return errors.Wrapf(err, "space '%s' is not ready yet", space)
+		return fmt.Errorf("space '%s' is not ready yet: %w", space, err)
 	}
 	return nil
 }
@@ -67,7 +67,7 @@ func ForSubscriptionWithCriteria(cl client.Client, name, namespace string, timeo
 	if err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, timeout, true, func(ctx context.Context) (bool, error) {
 		return HasSubscriptionWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
-		return errors.Wrapf(err, "could not find a Subscription with name '%s' in namespace '%s' that meets the expected criteria", name, namespace)
+		return fmt.Errorf("could not find a Subscription with name '%s' in namespace '%s' that meets the expected criteria: %w", name, namespace, err)
 	}
 	return nil
 }
@@ -93,7 +93,7 @@ func ForCSVWithCriteria(cl client.Client, name, namespace string, timeout time.D
 	if err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, timeout, true, func(ctx context.Context) (bool, error) {
 		return HasCSVWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
-		return errors.Wrapf(err, "could not find a CSV with name '%s' in namespace '%s' that meets the expected criteria", name, namespace)
+		return fmt.Errorf("could not find a CSV with name '%s' in namespace '%s' that meets the expected criteria: %w", name, namespace, err)
 	}
 	return nil
 }

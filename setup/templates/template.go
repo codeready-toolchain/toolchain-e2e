@@ -12,7 +12,6 @@ import (
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	multierror "github.com/hashicorp/go-multierror"
 	templatev1 "github.com/openshift/api/template/v1"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubectl/pkg/scheme"
@@ -148,7 +147,7 @@ func applyObject(ctx context.Context, applycl *applyclientlib.SSAApplyClient, ob
 		}
 		return true, nil
 	}); err != nil {
-		return errors.Wrapf(err, "could not apply resource '%s' in namespace '%s'", obj.GetName(), obj.GetNamespace())
+		return fmt.Errorf("could not apply resource '%s' in namespace '%s': %w", obj.GetName(), obj.GetNamespace(), err)
 	}
 	return nil
 }

@@ -12,7 +12,8 @@ import (
 // TestHeader opens and verifies that 'Red Hat Developer Hub'
 // and 'Contact Red Hat Sales' links are not broken
 func TestHeader(t *testing.T) {
-	page := sandboxui.Setup(t, "test-header")
+	testName := "test-header"
+	page := sandboxui.Setup(t, testName)
 
 	// opens and verifies that 'Red Hat Developer Hub' popup is not broken
 	rhdhLink := page.GetByRole("link", playwright.PageGetByRoleOptions{
@@ -20,7 +21,7 @@ func TestHeader(t *testing.T) {
 	})
 	sandboxui.IsVisible(t, rhdhLink)
 
-	rhdhPage, err := sandboxui.ClickAndWaitForPopup(page, rhdhLink)
+	rhdhPage, err := sandboxui.ClickAndWaitForPopup(t, page, rhdhLink, testName)
 	require.NoError(t, err)
 
 	h1Text, err := rhdhPage.Locator("h1").TextContent()
@@ -33,7 +34,7 @@ func TestHeader(t *testing.T) {
 	salesBtn := page.GetByRole("button", playwright.PageGetByRoleOptions{
 		Name: "Contact Red Hat Sales",
 	})
-	salesPage, err := sandboxui.ClickAndWaitForPopup(page, salesBtn)
+	salesPage, err := sandboxui.ClickAndWaitForPopup(t, page, salesBtn, testName)
 	require.NoError(t, err)
 
 	h1Text, err = salesPage.Locator("h1").TextContent()

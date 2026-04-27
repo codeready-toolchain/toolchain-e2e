@@ -26,7 +26,7 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 	}
 
 	switch environment {
-	case DevEnv:
+	case DevEnv, ProdEnv:
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Red Hat login",
 		})
@@ -59,7 +59,9 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 }
 
 func (lp *LoginPage) Navigate(t *testing.T, url string) {
-	_, err := lp.Page.Goto(url)
+	_, err := lp.Page.Goto(url, playwright.PageGotoOptions{
+		Timeout: playwright.Float(60000), // 1 minute timeout
+	})
 	require.NoError(t, err)
 }
 
@@ -67,7 +69,7 @@ func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
 	err := lp.LoginUsernameLoc.Fill(loginUsername)
 	require.NoError(t, err)
 
-	if lp.Env == DevEnv {
+	if lp.Env == DevEnv || lp.Env == ProdEnv {
 		err := lp.NextBtn.Click()
 		require.NoError(t, err)
 	}

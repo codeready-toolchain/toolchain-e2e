@@ -41,8 +41,8 @@ e2e-run-devsandbox-dashboard:
 	@echo "Running Developer Sandbox Dashboard setup e2e tests..."
 	DEVSANDBOX_DASHBOARD_NS=${DEVSANDBOX_DASHBOARD_NS} go test "./test/e2e/devsandbox-dashboard/setup" -v -timeout=10m -failfast
 	
-	@echo "Running Developer Sandbox Dashboard e2e tests in firefox..."
-	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/.env > testsupport/devsandbox-dashboard/.env
+	@echo "Running Developer Sandbox Dashboard e2e tests in Firefox..."
+	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox ENVIRONMENT=${UI_ENVIRONMENT} envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/.env > testsupport/devsandbox-dashboard/.env
 	@HOST_NS=$(HOST_NS) MEMBER_NS=$(MEMBER_NS) MEMBER_NS_2=$(MEMBER_NS_2) REGISTRATION_SERVICE_NS=$(HOST_NS) SECOND_MEMBER_MODE=$(SECOND_MEMBER) go test "./test/e2e/devsandbox-dashboard" -v -timeout=10m -failfast
 
 	@echo "The Developer Sandbox Dashboard e2e tests successfully finished"
@@ -97,4 +97,34 @@ endif
 	  -e QUAY_NAMESPACE=$(QUAY_NAMESPACE) \
 	  -e DEPLOY_UI=true \
 	  -e PUBLISH_UI=false \
+	  -e RUNNING_IN_CONTAINER=true \
 	  $(E2E_TEST_IMAGE_NAME) make test-devsandbox-dashboard-e2e
+
+# Run Developer Sandbox Dashboard e2e tests against prod
+.PHONY: test-devsandbox-dashboard-e2e-prod
+test-devsandbox-dashboard-e2e-prod:
+	@echo "Installing Firefox browser for Playwright..."
+	go tool playwright install firefox
+	
+	@echo "Running Developer Sandbox Dashboard e2e tests in Firefox..."
+	@SSO_USERNAME=${SSO_USERNAME_READ} SSO_PASSWORD=${SSO_PASSWORD_READ} BASE_URL=https://sandbox.redhat.com/ BROWSER=firefox ENVIRONMENT=prod KUBECONFIG=${KUBECONFIG} envsubst < deploy/devsandbox-dashboard/ui-e2e-tests/.env > testsupport/devsandbox-dashboard/.env
+	@go test "./test/e2e/devsandbox-dashboard" -v -timeout=10m -failfast
+	
+	@echo "The Developer Sandbox Dashboard e2e tests successfully finished"
+
+
+# Run Developer Sandbox Dashboard e2e tests against prod in container using podman
+.PHONY: test-devsandbox-dashboard-in-container-prod
+test-devsandbox-dashboard-in-container-prod: build-devsandbox-dashboard-e2e-tests
+	@rm -f build/_output/bin/ksctl
+	@echo "running the prod e2e tests in podman container..."
+	podman run --platform $(IMAGE_PLATFORM) --rm \
+	  -v $(KUBECONFIG):/root/.kube/config \
+	  -e KUBECONFIG=/root/.kube/config \
+	  -v ${PWD}:/root/toolchain-e2e \
+	  -e E2E_REPO_PATH=/root/toolchain-e2e \
+	  -e SSO_USERNAME=$(SSO_USERNAME) \
+	  -e SSO_PASSWORD=$(SSO_PASSWORD) \
+	  -e RUNNING_IN_CONTAINER=true \
+	  -e PATH=/app/build/_output/bin:$$PATH \
+	  $(E2E_TEST_IMAGE_NAME) make test-devsandbox-dashboard-e2e-prod

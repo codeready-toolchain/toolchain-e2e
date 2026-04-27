@@ -11,7 +11,6 @@ import (
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	k8sutil "k8s.io/apimachinery/pkg/util/wait"
@@ -124,13 +123,13 @@ func (g *Gatherer) sample(q queries.Query) error {
 		if strings.Contains(err.Error(), "client error: 403") {
 			url, tokenErr := auth.GetTokenRequestURI(g.k8sClient)
 			if tokenErr != nil {
-				return errors.Wrapf(err, "metrics query failed with 403 (Forbidden)")
+				return fmt.Errorf("metrics query failed with 403 (Forbidden): %w", err)
 			}
-			return errors.Wrapf(err, "metrics query failed with 403 (Forbidden) - retrieve a new token from %s", url)
+			return fmt.Errorf("metrics query failed with 403 (Forbidden) - retrieve a new token from %s: %w", url, err)
 		}
-		return errors.Wrapf(err, "metrics query failed - check whether prometheus is still healthy in the cluster")
+		return fmt.Errorf("metrics query failed - check whether prometheus is still healthy in the cluster: %w", err)
 	} else if len(warnings) > 0 {
-		return errors.Wrapf(fmt.Errorf("warnings: %v", warnings), "metrics query had unexpected warnings")
+		return fmt.Errorf("metrics query had unexpected warnings: %w", fmt.Errorf("warnings: %v", warnings))
 	}
 
 	vector := val.(model.Vector)

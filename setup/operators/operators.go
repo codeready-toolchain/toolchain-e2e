@@ -12,7 +12,6 @@ import (
 
 	ctemplate "github.com/codeready-toolchain/toolchain-common/pkg/template"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -68,7 +67,7 @@ func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.
 	for _, templatePath := range templatePaths {
 		tmpl, err := templates.GetTemplateFromFile(templatePath)
 		if err != nil {
-			return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
+			return fmt.Errorf("invalid template file: '%s': %w", templatePath, err)
 		}
 
 		processor := ctemplate.NewProcessor(s)
@@ -135,10 +134,10 @@ func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.
 		}
 		installDuration := time.Since(startTime)
 		if csverr != nil {
-			return errors.Wrapf(csverr, "failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)
+			return fmt.Errorf("failed to find CSV '%s' with Phase 'Succeeded': %w", currentCSV, csverr)
 		}
 		if err != nil {
-			return errors.Wrapf(err, "failed to verify installation of operator with subscription '%s' after %s", subscriptionResource.GetName(), installDuration.String())
+			return fmt.Errorf("failed to verify installation of operator with subscription '%s' after %s: %w", subscriptionResource.GetName(), installDuration.String(), err)
 		}
 
 		fmt.Printf("Verified installation of operator with subscription '%s' completed in %s\n\n", subscriptionResource.GetName(), installDuration.String())
