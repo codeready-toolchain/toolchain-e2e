@@ -195,8 +195,10 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		domains := "anotherdomain.edu"
 		// when
 		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true).Domains(domains), testconfig.RegistrationService().Verification().Enabled(false))
-		VerifyToolchainConfig(s.T(), hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains), wait.UntilToolchainConfigHasVerificationEnabled(false))
-
+		VerifyToolchainConfig(s.T(), hostAwait,
+			wait.UntilToolchainConfigHasAutoApprovalDomains(domains),
+			wait.UntilToolchainConfigHasVerificationEnabled(false),
+			wait.UntilToolchainConfigHasSyncedStatus(wait.ToolchainConfigSyncComplete()))
 		// and
 		waitingListUser3 := NewSignupRequest(s.Awaitilities).
 			Username("waitinglist3").
