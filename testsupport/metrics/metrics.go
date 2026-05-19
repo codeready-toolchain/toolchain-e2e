@@ -156,7 +156,7 @@ func GetMetricLabels(restConfig *rest.Config, baseURL string, family string) ([]
 	}
 
 	// parse the metrics
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.UTF8Validation)
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
 	if err != nil {
 		return nil, err
