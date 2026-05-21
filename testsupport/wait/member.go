@@ -14,8 +14,8 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	quotav1 "github.com/openshift/api/quota/v1"
