@@ -122,6 +122,14 @@ spec:
         requests.ephemeral-storage: '{{.EPHEMERAL_STORAGE_REQUEST}}'
         requests.storage: '{{.STORAGE_REQUEST}}'
   - apiVersion: v1
+    kind: ResourceQuota
+    metadata:
+      name: compute-spacerequests
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      hard:
+        count/spacerequests.toolchain.dev.openshift.com: "1"
+  - apiVersion: v1
     kind: LimitRange
     metadata:
       name: resource-limits
