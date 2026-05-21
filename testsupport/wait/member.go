@@ -1541,6 +1541,28 @@ func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapR
 	return aap, err
 }
 
+// WaitForClaw waits for the Claw resource to reach the expected idle state (spec.idle)
+func (a *MemberAwaitility) WaitForClaw(t *testing.T, name, namespace string, clawRes dynamic.NamespaceableResourceInterface, expectedIdled bool) (*unstructured.Unstructured, error) {
+	t.Logf("waiting for Claw '%s' in namespace '%s'", name, namespace)
+	var claw *unstructured.Unstructured
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
+		var err error
+		claw, err = clawRes.Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		idled, _, err := unstructured.NestedBool(claw.UnstructuredContent(), "spec", "idle")
+		if err != nil {
+			return true, err
+		}
+		return expectedIdled == idled, nil
+	})
+	return claw, err
+}
+
 // WaitUntilInferenceServiceDeleted waits for the InferenceService resource to be deleted (idled)
 func (a *MemberAwaitility) WaitUntilInferenceServiceDeleted(t *testing.T, name, namespace string, inferenceServiceRes dynamic.NamespaceableResourceInterface) error {
 	t.Logf("waiting for InferenceService '%s' to be deleted in namespace '%s'", name, namespace)
