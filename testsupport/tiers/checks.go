@@ -116,6 +116,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		numberOfLimitRanges(1),
 		limitRange("1", "1Gi", "10m", "64Mi"),
+		resourceQuotaSpaceRequests(),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
@@ -200,6 +201,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 			corev1.ResourceName("limits.nvidia.com/gpu"):   "0",
 		}),
 		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
+		resourceQuotaSpaceRequests(),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
@@ -561,15 +563,18 @@ func (a *clawTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]s
 			checks = append(checks, clawUserRole())
 			roles++
 			for _, userName := range usernames {
-				checks = append(checks, clawUserRoleBinding(userName))
-				rolebindings++
+				checks = append(checks,
+					clawUserRoleBinding(userName),
+					clawViewRoleBinding(userName),
+				)
+				rolebindings += 2
 			}
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
 		}
 	}
 	checks = append(checks,
-		numberOfToolchainRoles(roles+1),              // +1 for `exec-pods`
+		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
 	)
 	return checks, nil
@@ -649,28 +654,13 @@ func clawUserRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{""},
-					Resources: []string{"pods"},
-					Verbs:     []string{"get", "list", "watch"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"pods/log"},
-					Verbs:     []string{"get", "list"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"events"},
-					Verbs:     []string{"get", "list", "watch"},
-				},
-				{
-					APIGroups: []string{"route.openshift.io"},
-					Resources: []string{"routes"},
-					Verbs:     []string{"get", "list", "watch"},
+					Resources: []string{"pods/exec"},
+					Verbs:     []string{"get", "create"},
 				},
 				{
 					APIGroups: []string{""},
 					Resources: []string{"secrets"},
-					Verbs:     []string{"create", "update", "patch", "delete"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 			},
 		}
@@ -688,6 +678,19 @@ func clawUserRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, userName, rb.Subjects[0].Name)
 		assert.Equal(t, "claw-user", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+}
+
+func clawViewRoleBinding(userName string) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, userName+"-view", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
+		assert.Equal(t, "view", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 	}
 }
@@ -891,6 +894,21 @@ func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs
 
 		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "storage", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaSpaceRequests() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity("1")
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-spacerequests", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "compute-spacerequests", criteria)
 		require.NoError(t, err)
 	}
 }
