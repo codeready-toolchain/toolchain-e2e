@@ -50,7 +50,7 @@ import (
 )
 
 var (
-	BundledNSTemplateTiers []string = []string{"base1ns", "base1nsnoidling", "base1ns6didler", "base"}
+	BundledNSTemplateTiers []string = []string{"base1ns", "base1nsnoidling", "base1ns6didler", "base", "claw"}
 	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env"}
 	AllE2eNSTemplateTiers  []string = append(BundledNSTemplateTiers, CustomNSTemplateTiers...)
 )
