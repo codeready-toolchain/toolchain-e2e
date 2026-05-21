@@ -14,6 +14,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
@@ -1413,6 +1414,16 @@ func (a *MemberAwaitility) Create(t *testing.T, obj client.Object) error {
 		}
 		return true, nil
 	})
+}
+
+// CreateWithCleanup tries to create the object until success and schedules cleanup at test end.
+// Workaround for https://github.com/kubernetes/kubernetes/issues/67761
+func (a *MemberAwaitility) CreateWithCleanup(t *testing.T, obj client.Object) error {
+	if err := a.Create(t, obj); err != nil {
+		return err
+	}
+	cleanup.AddCleanTasks(t, a.Client, obj)
+	return nil
 }
 
 // PodWaitCriterion a struct to compare with a given Pod

@@ -38,21 +38,13 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
 	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
 
-	// Create a Claw workload only in the dev namespace (the one being idled).
-	// Not added to prepareWorkloads to avoid exceeding the ClusterResourceQuota pod limit
-	// when workloads are created in multiple namespaces for the same user.
-	clawDeployment := createClaw(t, memberAwait, "test-idler-claw", idler.Name)
-	podsToIdle, err := memberAwait.WaitForPods(t, idler.Name, len(podsToIdle)+int(*clawDeployment.Spec.Replicas),
-		wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
-	require.NoError(t, err)
-
 	// Create more noise pods in non-user namespace
 	memberAwait.CreateNamespace(t, "workloads-noise")
 	externalNsPodsNoise := prepareWorkloads(t, await.Member1(), "workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	// The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
-	idler, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+	idler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
 		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
 			i.Spec.TimeoutSeconds = 5
 		})
@@ -181,6 +173,10 @@ func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 	// Create an Ansible Automation Platform resource
 	aapDeployment := createAAP(t, memberAwait, "test-idler-aap", namespace)
 	n = n + int(*aapDeployment.Spec.Replicas)
+
+	// Create a Claw resource
+	clawDeployment := createClaw(t, memberAwait, "test-idler-claw", namespace)
+	n = n + int(*clawDeployment.Spec.Replicas)
 
 	// Create a DataVolume resource with manual PVC and Pod
 	createDataVolume(t, memberAwait, "test-idler-datavolume", namespace)
