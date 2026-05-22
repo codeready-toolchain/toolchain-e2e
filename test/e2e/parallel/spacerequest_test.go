@@ -11,7 +11,9 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -338,5 +340,75 @@ func TestUpdateSpaceRequest(t *testing.T) {
 			wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
+	})
+}
+
+func TestCreateClawSpaceRequest(t *testing.T) {
+	t.Parallel()
+	awaitilities := WaitForDeployments(t)
+	memberAwait := awaitilities.Member1()
+
+	// Create a user with base1ns tier (which includes SpaceRequest RBAC and quota)
+	user := NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		TargetCluster(memberAwait).
+		SpaceTier("base1ns").
+		EnsureMUR().
+		Execute(t)
+	parentSpace := user.Space
+
+	t.Run("provision claw sub-space via SpaceRequest", func(t *testing.T) {
+		// Create a SpaceRequest for the claw tier in the user's -dev namespace
+		spaceRequest := NewSpaceRequest(t,
+			WithSpecTierName("claw"),
+			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+		)
+		err := memberAwait.CreateWithCleanup(t, spaceRequest)
+		require.NoError(t, err)
+
+		// Wait for the sub-space to be created and provisioned
+		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+			wait.UntilSpaceHasTier("claw"),
+			wait.UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+
+		// Verify all resources provisioned for the claw sub-space
+		// (namespace objects, cluster objects, and space roles)
+		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+
+		// Verify SpaceRequest status is provisioned
+		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+			wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
+			wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
+			wait.UntilSpaceRequestHasNamespaceAccessWithoutSecretRef(),
+		)
+		require.NoError(t, err)
+
+		t.Run("second SpaceRequest is rejected by quota", func(t *testing.T) {
+			// The base1ns ns_dev.yaml limits count/spacerequests.toolchain.dev.openshift.com to 1.
+			// Creating a second SpaceRequest should be rejected by the ResourceQuota.
+			secondSR := NewSpaceRequest(t,
+				WithSpecTierName("claw"),
+				WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+			)
+			err := memberAwait.Client.Create(context.TODO(), secondSR)
+			require.Error(t, err)
+			assert.True(t, errors.IsForbidden(err), "expected Forbidden error due to ResourceQuota, got: %v", err)
+		})
+
+		t.Run("delete SpaceRequest cleans up sub-space", func(t *testing.T) {
+			// Delete the SpaceRequest and verify the claw sub-space is removed
+			err := memberAwait.Client.Delete(context.TODO(), spaceRequest)
+			require.NoError(t, err)
+
+			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "claw")
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
+			require.NoError(t, err)
+			err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
+			require.NoError(t, err)
+		})
 	})
 }

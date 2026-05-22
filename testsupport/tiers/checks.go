@@ -32,6 +32,7 @@ const (
 	base1ns         = "base1ns"
 	base1ns6didler  = "base1ns6didler"
 	base1nsnoidling = "base1nsnoidling"
+	claw            = "claw"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -62,6 +63,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
+	case claw:
+		return &clawTierChecks{tierName: claw}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
@@ -113,6 +116,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		numberOfLimitRanges(1),
 		limitRange("1", "1Gi", "10m", "64Mi"),
+		resourceQuotaSpaceRequests(),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
@@ -197,6 +201,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 			corev1.ResourceName("limits.nvidia.com/gpu"):   "0",
 		}),
 		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
+		resourceQuotaSpaceRequests(),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
@@ -525,6 +530,171 @@ func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck 
 		idlers(0, "env"))
 }
 
+type clawTierChecks struct {
+	tierName string
+}
+
+func (a *clawTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeployNoScope("8", "10Gi", "1", "3Gi"),
+		resourceQuotaStorage("5Gi", "15Gi", "5Gi", "1"),
+		limitRange("500m", "512Mi", "10m", "64Mi"),
+		numberOfLimitRanges(1),
+		execPodsRole(),
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+		networkPolicySameNamespace(),
+		networkPolicyAllowFromIngress(),
+		networkPolicyAllowFromMonitoring(),
+		networkPolicyAllowFromOlmNamespaces(),
+		networkPolicyAllowFromConsoleNamespaces(),
+		numberOfNetworkPolicies(5),
+	}
+	return checks
+}
+
+func (a *clawTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
+	checks := []spaceRoleObjectsCheck{}
+	roles := 0
+	rolebindings := 0
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
+			checks = append(checks, clawUserRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					clawUserRoleBinding(userName),
+					clawViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		default:
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
+		}
+	}
+	checks = append(checks,
+		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
+		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
+	)
+	return checks, nil
+}
+
+func (a *clawTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
+	verifyNsTypes(t, a.tierName, templateRefs, "claw")
+	return templateRefs
+}
+
+func (a *clawTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaClaw(),
+		numberOfClusterResourceQuotas(1),
+		idlers(43200, "claw"))
+}
+
+func clusterResourceQuotaClaw() clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(map[corev1.ResourceName]resource.Quantity)
+			hard[count("deployments.apps")], err = resource.ParseQuantity("5")
+			require.NoError(t, err)
+			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("3")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("5")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("50")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-claw", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func resourceQuotaComputeDeployNoScope(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryRequest)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "compute-deploy", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func clawUserRole() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "claw-user", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"claw.sandbox.redhat.com"},
+					Resources: []string{"claws"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods/exec"},
+					Verbs:     []string{"get", "create"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+			},
+		}
+		assert.Len(t, role.Rules, len(expected.Rules))
+		assert.Equal(t, expected.Rules, role.Rules)
+	}
+}
+
+func clawUserRoleBinding(userName string) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, userName+"-claw-user", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
+		assert.Equal(t, "claw-user", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+}
+
+func clawViewRoleBinding(userName string) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, userName+"-view", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
+		assert.Equal(t, "view", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+}
+
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
 func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expectedNSTypes ...string) {
 	require.Len(t, templateRefs.Namespaces, len(expectedNSTypes))
@@ -724,6 +894,21 @@ func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs
 
 		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "storage", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaSpaceRequests() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity("1")
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-spacerequests", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "compute-spacerequests", criteria)
 		require.NoError(t, err)
 	}
 }
