@@ -1,0 +1,40 @@
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1
+metadata:
+  name: claws.claw.sandbox.redhat.com
+spec:
+  group: claw.sandbox.redhat.com
+  names:
+    plural: claws
+    singular: claw
+    kind: Claw
+    listKind: ClawList
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Claw is the Schema for the claws API
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec defines the desired state of Claw
+              type: object
+              properties:
+                idle:
+                  description: Scale down replicas to put Claw into an idle mode
+                  type: boolean
+            status:
+              description: Status defines the observed state of Claw
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}

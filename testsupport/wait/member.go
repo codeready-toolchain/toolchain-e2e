@@ -15,6 +15,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -1415,6 +1416,16 @@ func (a *MemberAwaitility) Create(t *testing.T, obj client.Object) error {
 	})
 }
 
+// CreateWithCleanup tries to create the object until success and schedules cleanup at test end.
+// Workaround for https://github.com/kubernetes/kubernetes/issues/67761
+func (a *MemberAwaitility) CreateWithCleanup(t *testing.T, obj client.Object) error {
+	if err := a.Create(t, obj); err != nil {
+		return err
+	}
+	cleanup.AddCleanTasks(t, a.Client, obj)
+	return nil
+}
+
 // PodWaitCriterion a struct to compare with a given Pod
 type PodWaitCriterion struct {
 	Match func(*corev1.Pod) bool
@@ -1525,7 +1536,7 @@ func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapR
 	var aap *unstructured.Unstructured
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
 		var err error
-		aap, err = aapRes.Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		aap, err = aapRes.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -1539,6 +1550,31 @@ func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapR
 		return expectedIdled == idled, nil
 	})
 	return aap, err
+}
+
+// WaitForClaw waits for the Claw resource to reach the expected idle state (spec.idle)
+func (a *MemberAwaitility) WaitForClaw(t *testing.T, name, namespace string, clawRes dynamic.NamespaceableResourceInterface, expectedIdled bool) (*unstructured.Unstructured, error) {
+	t.Logf("waiting for Claw '%s' in namespace '%s'", name, namespace)
+	var claw *unstructured.Unstructured
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
+		var err error
+		claw, err = clawRes.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		idled, found, err := unstructured.NestedBool(claw.UnstructuredContent(), "spec", "idle")
+		if err != nil {
+			return true, err
+		}
+		if !found {
+			return false, nil
+		}
+		return expectedIdled == idled, nil
+	})
+	return claw, err
 }
 
 // WaitUntilInferenceServiceDeleted waits for the InferenceService resource to be deleted (idled)

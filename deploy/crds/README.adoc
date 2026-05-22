@@ -11,3 +11,6 @@ Copy from a cluster with Ansible Automation Platform operator installed
 
 == serving CRDs
 Copy from a cluster with Serverless operator installed
+
+== claws CRD
+Copy from the claw-operator repo (config/crd/bases/claw.sandbox.redhat.com_claws.yaml)

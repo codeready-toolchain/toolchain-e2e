@@ -38,13 +38,21 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
 	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
 
+	// Create a Claw workload only in the dev namespace (the one being idled).
+	// Not added to prepareWorkloads to avoid exceeding the ClusterResourceQuota pod limit
+	// when workloads are created in multiple namespaces for the same user.
+	clawDeployment := createClaw(t, memberAwait, "test-idler-claw", idler.Name)
+	podsToIdle, err := memberAwait.WaitForPods(t, idler.Name, len(podsToIdle)+int(*clawDeployment.Spec.Replicas),
+		wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
+	require.NoError(t, err)
+
 	// Create more noise pods in non-user namespace
 	memberAwait.CreateNamespace(t, "workloads-noise")
 	externalNsPodsNoise := prepareWorkloads(t, await.Member1(), "workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	// The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
-	idler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+	idler, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
 		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
 			i.Spec.TimeoutSeconds = 5
 		})
@@ -99,6 +107,10 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", idler.Name, clnt.Resource(aapRes), true)
+	require.NoError(t, err)
+
+	// Wait for the Claw resource to be idled (spec.idle: true)
+	_, err = memberAwait.WaitForClaw(t, "test-idler-claw", idler.Name, clnt.Resource(clawRes), true)
 	require.NoError(t, err)
 
 	// Wait for the InferenceService to be deleted - the expected action to idle
@@ -208,6 +220,7 @@ func createDeployment(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 }
 
 var aapRes = schema.GroupVersionResource{Group: "aap.ansible.com", Version: "v1alpha1", Resource: "ansibleautomationplatforms"}
+var clawRes = schema.GroupVersionResource{Group: "claw.sandbox.redhat.com", Version: "v1alpha1", Resource: "claws"}
 var servingRuntimeRes = schema.GroupVersionResource{Group: "serving.kserve.io", Version: "v1alpha1", Resource: "servingruntimes"}
 var inferenceServiceRes = schema.GroupVersionResource{Group: "serving.kserve.io", Version: "v1beta1", Resource: "inferenceservices"}
 var dataVolumeRes = schema.GroupVersionResource{Group: "cdi.kubevirt.io", Version: "v1beta1", Resource: "datavolumes"}
@@ -242,6 +255,51 @@ func createAAP(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace
 	require.NoError(t, err)
 
 	return deployment
+}
+
+// createClaw creates an instance of claws.claw.sandbox.redhat.com with one deployment owned by this instance
+// returns the underlying deployment
+func createClaw(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *appsv1.Deployment {
+	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+
+	claw := clawResource(name)
+	createdClaw, err := clnt.Resource(clawRes).Namespace(namespace).Create(context.TODO(), claw, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	replicas := int32(2)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels(name)},
+			Replicas: &replicas,
+			Template: podTemplateSpec(name),
+		},
+	}
+	err = controllerutil.SetOwnerReference(createdClaw, deployment, scheme.Scheme)
+	require.NoError(t, err)
+	err = memberAwait.Create(t, deployment)
+	require.NoError(t, err)
+
+	return deployment
+}
+
+func clawResource(name string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "claw.sandbox.redhat.com/v1alpha1",
+			"kind":       "Claw",
+			"metadata": map[string]interface{}{
+				"name": name,
+			},
+			"spec": map[string]interface{}{
+				"idle": false,
+			},
+		},
+	}
 }
 
 func createReplicaSet(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *appsv1.ReplicaSet {
