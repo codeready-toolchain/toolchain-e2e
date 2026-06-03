@@ -648,7 +648,7 @@ func (s *userManagementTestSuite) TestUserRejected() {
 
 	// Confirm the state label is set to "rejected" and the Complete/Rejected condition is set
 	_, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
-		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Rejected())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.Rejected())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueRejected))
 	require.NoError(s.T(), err)
 
