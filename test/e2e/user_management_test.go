@@ -635,6 +635,33 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 }
 
+func (s *userManagementTestSuite) TestUserRejected() {
+	hostAwait := s.Host()
+
+	// Create a UserSignup with the rejected state already set at creation time,
+	// mirroring what the registration service does when the account verifier returns "reject".
+	username := "rejecteduser"
+	email := "rejecteduser@test.com"
+	userSignup := NewUserSignup(hostAwait.Namespace, username, email)
+	states.SetRejected(userSignup, true)
+	err := hostAwait.CreateWithCleanup(s.T(), userSignup)
+	require.NoError(s.T(), err)
+
+	// Confirm the state label is set to "rejected" and the Complete/Rejected condition is set
+	userSignup, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Rejected())...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueRejected))
+	require.NoError(s.T(), err)
+
+	// Confirm that no MasterUserRecord was created for the rejected user
+	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(s.T(), username)
+	require.Error(s.T(), err)
+
+	// Confirm that no Space was created for the rejected user
+	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForSpace(s.T(), username)
+	require.Error(s.T(), err)
+}
+
 func (s *userManagementTestSuite) verifyRegServiceForBannedUser(method, token string) {
 	hostAwait := s.Host()
 	route := hostAwait.RegistrationServiceURL
