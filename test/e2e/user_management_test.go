@@ -639,7 +639,6 @@ func (s *userManagementTestSuite) TestUserRejected() {
 	hostAwait := s.Host()
 
 	// Create a UserSignup with the rejected state already set at creation time,
-	// mirroring what the registration service does when the account verifier returns "reject".
 	username := "rejecteduser"
 	email := "rejecteduser@test.com"
 	userSignup := NewUserSignup(hostAwait.Namespace, username, email)
@@ -648,7 +647,7 @@ func (s *userManagementTestSuite) TestUserRejected() {
 	require.NoError(s.T(), err)
 
 	// Confirm the state label is set to "rejected" and the Complete/Rejected condition is set
-	userSignup, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
+	_, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Rejected())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueRejected))
 	require.NoError(s.T(), err)
