@@ -114,11 +114,10 @@ func launchBrowser(t *testing.T, pw *playwright.Playwright) playwright.Browser {
 }
 
 func handleCookiesConsent(t *testing.T, page playwright.Page) {
-	// wait for the iframe to appear
-	iframe := page.Locator("iframe[name=\"trustarc_cm\"]")
+	// TrustArc renders as a div with a declarative shadow DOM, not a real iframe.
+	consent := page.Locator("div[name=\"trustarc_cm\"]")
 
-	// check if iframe exists
-	err := iframe.WaitFor(playwright.LocatorWaitForOptions{
+	err := consent.WaitFor(playwright.LocatorWaitForOptions{
 		State: playwright.WaitForSelectorStateVisible,
 	})
 
@@ -127,26 +126,24 @@ func handleCookiesConsent(t *testing.T, page playwright.Page) {
 		return
 	}
 
-	// get the content frame
-	contentFrame := iframe.ContentFrame()
-	require.NotNil(t, contentFrame)
-
 	// TrustArc can show different modals (e.g. full consent vs. simplified); accept whichever button is present.
-	agreeProceed := contentFrame.GetByRole("button", playwright.FrameLocatorGetByRoleOptions{
+	agreeProceed := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
 		Name: "Agree and proceed with",
 	})
 
 	// to some us states, like texas, it appears the "Cookie Preferences and Opt-Out Rights" modal
-	acceptDefault := contentFrame.GetByRole("button", playwright.FrameLocatorGetByRoleOptions{
+	acceptDefault := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
 		Name: "Accept default",
 	})
 	consentButton := agreeProceed.Or(acceptDefault)
 
+	IsVisible(t, consentButton)
+
 	err = consentButton.Click()
 	require.NoError(t, err)
 
-	// wait for iframe to disappear (indicates cookie acceptance complete)
-	err = iframe.WaitFor(playwright.LocatorWaitForOptions{
+	// wait for the consent banner to disappear
+	err = consent.WaitFor(playwright.LocatorWaitForOptions{
 		State: playwright.WaitForSelectorStateDetached,
 	})
 	require.NoError(t, err)
