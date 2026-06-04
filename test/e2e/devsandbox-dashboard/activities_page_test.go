@@ -61,7 +61,7 @@ func TestActivitiesPage(t *testing.T) {
 		require.NoError(t, err)
 
 		// assert the popup heading matches the expected article title
-		h1 := popup.Locator("h1")
+		h1 := popup.Locator("h1").First()
 		h1Text, err := h1.TextContent()
 		require.NoError(t, err)
 		// clean text since it returns this format: Overview:\n\t\t\t\t\t\t
