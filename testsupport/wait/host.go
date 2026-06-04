@@ -13,7 +13,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
-	"github.com/codeready-toolchain/toolchain-common/pkg/configuration"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -1726,14 +1725,20 @@ func UntilToolchainConfigHasVerificationEnabled(expected bool) ToolchainConfigWa
 	}
 }
 
-func UntilToolchainConfigHasPhoneLookupMode(expected string) ToolchainConfigWaitCriterion {
+func UntilToolchainConfigHasPhoneLookupMode(expected toolchainv1alpha1.PhoneLookupMode) ToolchainConfigWaitCriterion {
 	return ToolchainConfigWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
-			mode := configuration.GetString(actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode, "log")
+			mode := toolchainv1alpha1.PhoneLookupModeLog
+			if actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode != nil {
+				mode = *actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode
+			}
 			return mode == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
-			mode := configuration.GetString(actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode, "log")
+			mode := toolchainv1alpha1.PhoneLookupModeLog
+			if actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode != nil {
+				mode = *actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode
+			}
 			return fmt.Sprintf("expected phoneLookupMode to be '%s'.\n\tactual: '%s'", expected, mode)
 		},
 	}

@@ -21,16 +21,16 @@ func TestPhoneLookupMode(t *testing.T) {
 	route := hostAwait.RegistrationServiceURL
 
 	t.Run("phoneLookupMode can be set on ToolchainConfig", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode("log"))
-		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasPhoneLookupMode("log"))
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
+		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasPhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
 
 		config := hostAwait.GetToolchainConfig(t)
 		require.NotNil(t, config.Spec.Host.RegistrationService.Verification.PhoneLookupMode)
-		assert.Equal(t, "log", *config.Spec.Host.RegistrationService.Verification.PhoneLookupMode)
+		assert.Equal(t, toolchainv1alpha1.PhoneLookupModeLog, *config.Spec.Host.RegistrationService.Verification.PhoneLookupMode)
 	})
 
 	t.Run("disabled mode skips phone lookup annotations", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode("disabled"))
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeDisabled))
 
 		userSignup, token := signup(t, hostAwait)
 		phoneNumber := uniqueUKPhoneNumber()
@@ -48,7 +48,7 @@ func TestPhoneLookupMode(t *testing.T) {
 	})
 
 	t.Run("log mode stores phone lookup annotations when lookup succeeds", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode("log"))
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
 
 		userSignup, token := signup(t, hostAwait)
 		phoneNumber := uniqueUKPhoneNumber()
@@ -77,7 +77,7 @@ func TestPhoneLookupMode(t *testing.T) {
 	})
 
 	t.Run("enabled mode blocks verification for previously rejected signup", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode("enabled"))
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled))
 
 		userSignup, token := signup(t, hostAwait)
 		phoneNumber := uniqueUKPhoneNumber()
@@ -107,7 +107,7 @@ func TestPhoneLookupMode(t *testing.T) {
 	})
 
 	t.Run("enabled mode skips lookup for US numbers", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode("enabled"))
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled))
 
 		userSignup, token := signup(t, hostAwait)
 		phoneNumber := strings.ReplaceAll(uuid.Must(uuid.NewV4()).String(), "-", "")[:10]

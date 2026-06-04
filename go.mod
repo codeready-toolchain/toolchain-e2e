@@ -142,9 +142,9 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-replace github.com/codeready-toolchain/api => github.com/fbm3307/toolchainapi v0.0.0-20260604080936-f3460ab84acc
+replace github.com/codeready-toolchain/api => github.com/fbm3307/toolchainapi v0.0.0-20260604095004-7254759589cb
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20260604083249-f7d10b0cf7f8
+replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20260604095108-e1b8464eda32
 
 go 1.24.4
 
