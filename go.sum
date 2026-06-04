@@ -26,10 +26,6 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/cloudflare/circl v1.1.0/go.mod h1:prBCrKB9DV4poKZY1l9zBXg2QJY7mvgRvtMxxK7fi4I=
 github.com/cloudflare/circl v1.6.3 h1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=
 github.com/cloudflare/circl v1.6.3/go.mod h1:2eXP6Qfat4O/Yhh8BznvKnJ+uzEoTQ6jVKJRn81BiS4=
-github.com/codeready-toolchain/api v0.0.0-20260305144020-4ff0e6b6e174 h1:hed3ZyardxswS6yMB0ME9l3vEkO+pFouyk4dvIiAQOo=
-github.com/codeready-toolchain/api v0.0.0-20260305144020-4ff0e6b6e174/go.mod h1:PMg6kNHuCGNlu3MOdrCisqGkBpvzB0qS1+E6nrXxPAc=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20260305144813-52d9242e8c74 h1:yxKX0m6Kk1AIWwaGpf25flTfTrYrEJ9TyLW5NEQSq0Y=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20260305144813-52d9242e8c74/go.mod h1:NEnnq2R5GYoWdN0b0iaSdX7L1ndrzxl3ML0m7XLsSqk=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -50,6 +46,10 @@ github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f h1:Wl78ApPPB2
 github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f/go.mod h1:OSYXu++VVOHnXeitef/D8n/6y4QV8uLHSFXX4NeXMGc=
 github.com/fatih/color v1.18.0 h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=
 github.com/fatih/color v1.18.0/go.mod h1:4FelSpRwEGDpQ12mAdzqdOukCy4u8WUtOY6lkT/6HfU=
+github.com/fbm3307/toolchain-common v0.0.0-20260604083249-f7d10b0cf7f8 h1:sObsn7DQTpOV3xFUjz3CukBbV0yBbocoy7oY44lmohI=
+github.com/fbm3307/toolchain-common v0.0.0-20260604083249-f7d10b0cf7f8/go.mod h1:pcEdk1XDpioLNGX3/p10q6TG+JiM1fpNGksjUGN4j+8=
+github.com/fbm3307/toolchainapi v0.0.0-20260604080936-f3460ab84acc h1:uqVQWx9dBBUQ63BuyinZX8UYPDPiPzUmOrinw+Luw/M=
+github.com/fbm3307/toolchainapi v0.0.0-20260604080936-f3460ab84acc/go.mod h1:PMg6kNHuCGNlu3MOdrCisqGkBpvzB0qS1+E6nrXxPAc=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
 github.com/fsnotify/fsnotify v1.8.0 h1:dAwr6QBTBZIkG8roQaJjGof0pp0EeF+tNV7YBP3F/8M=

@@ -20,6 +20,7 @@ spec:
       workatoWebHookURL: https://webhooks.testwebhook
       verification:
         enabled: true
+        phoneLookupMode: 'disabled'
         excludedEmailDomains: 'redhat.com,acme.com'
         secret:
           ref: 'host-operator-secret'
