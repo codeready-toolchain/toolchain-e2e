@@ -24,7 +24,7 @@ func TestHeader(t *testing.T) {
 	rhdhPage, err := sandboxui.ClickAndWaitForPopup(t, page, rhdhLink, testName)
 	require.NoError(t, err)
 
-	h1Text, err := rhdhPage.Locator("h1").TextContent()
+	h1Text, err := rhdhPage.Locator("h1").First().TextContent()
 	require.NoError(t, err)
 	require.Contains(t, h1Text, "Red Hat Developer Hub")
 
@@ -37,7 +37,7 @@ func TestHeader(t *testing.T) {
 	salesPage, err := sandboxui.ClickAndWaitForPopup(t, page, salesBtn, testName)
 	require.NoError(t, err)
 
-	h1Text, err = salesPage.Locator("h1").TextContent()
+	h1Text, err = salesPage.Locator("h1").First().TextContent()
 	require.NoError(t, err)
 	// replace non-breaking space with regular space
 	h1Text = strings.ReplaceAll(h1Text, "\u00a0", " ")
