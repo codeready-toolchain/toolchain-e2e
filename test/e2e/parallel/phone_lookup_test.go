@@ -21,12 +21,9 @@ func TestPhoneLookupMode(t *testing.T) {
 	route := hostAwait.RegistrationServiceURL
 
 	t.Run("phoneLookupMode can be set on ToolchainConfig", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
-		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasPhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
-
-		config := hostAwait.GetToolchainConfig(t)
-		require.NotNil(t, config.Spec.Host.RegistrationService.Verification.PhoneLookupMode)
-		assert.Equal(t, toolchainv1alpha1.PhoneLookupModeLog, *config.Spec.Host.RegistrationService.Verification.PhoneLookupMode)
+		// Non-default value: CRD default "log" is omitted in spec when set explicitly, so use "enabled" to verify persistence.
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled))
+		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasPhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled))
 	})
 
 	t.Run("disabled mode skips phone lookup annotations", func(t *testing.T) {
