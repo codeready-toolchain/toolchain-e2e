@@ -15,6 +15,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Twilio test credentials with magic lookup numbers return deterministic SMS Pumping Risk
+// responses at no cost. The API takes country_code and phone_number separately.
+// See: https://www.twilio.com/docs/lookup/magic-numbers-for-lookup/testing-sms-pumping-risk-with-magic-numbers
+//
+// Magic numbers used:
+//
+//	+441234567890 → high risk, not blocked, score 2
+//	+441234567891 → high risk, blocked, score 34
+//	+911234567890 → low risk, not blocked, score 2
+const (
+	twilioMagicPhoneHighRisk        = "1234567890" // +44 prefix → high risk, not blocked
+	twilioMagicPhoneHighRiskBlocked = "1234567891" // +44 prefix → high risk, blocked
+)
+
 func TestPhoneLookupMode(t *testing.T) {
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
@@ -30,11 +44,9 @@ func TestPhoneLookupMode(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeDisabled))
 
 		userSignup, token := signup(t, hostAwait)
-		phoneNumber := uniqueUKPhoneNumber()
-
 		NewHTTPRequest(t).
 			InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token,
-				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, phoneNumber), http.StatusNoContent)
+				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, twilioMagicPhoneHighRisk), http.StatusNoContent)
 
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
@@ -48,27 +60,19 @@ func TestPhoneLookupMode(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
 
 		userSignup, token := signup(t, hostAwait)
-		phoneNumber := uniqueUKPhoneNumber()
-
 		NewHTTPRequest(t).
 			InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token,
-				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, phoneNumber), http.StatusNoContent)
+				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, twilioMagicPhoneHighRiskBlocked), http.StatusNoContent)
 
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
 		require.NoError(t, err)
 
-		lookupResult := userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey]
-		if lookupResult == "" {
-			t.Log("Twilio Lookup did not return a result (fail-open); skipping lookup annotation assertions")
-			return
-		}
-
-		assert.Contains(t, []string{"allowed", "rejected"}, lookupResult)
+		assert.Equal(t, "rejected", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey])
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupPhoneHashAnnotationKey])
-		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupCarrierRiskAnnotationKey])
-		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupNumberBlockedAnnotationKey])
-		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupRiskScoreAnnotationKey])
+		assert.Equal(t, "high", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupCarrierRiskAnnotationKey])
+		assert.Equal(t, "true", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupNumberBlockedAnnotationKey])
+		assert.Equal(t, "34", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupRiskScoreAnnotationKey])
 		// verification must proceed in log mode even when lookup result is rejected
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
@@ -77,8 +81,6 @@ func TestPhoneLookupMode(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled))
 
 		userSignup, token := signup(t, hostAwait)
-		phoneNumber := uniqueUKPhoneNumber()
-
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
 			Update(userSignup.Name, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
@@ -91,7 +93,7 @@ func TestPhoneLookupMode(t *testing.T) {
 
 		responseMap := NewHTTPRequest(t).
 			InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token,
-				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, phoneNumber), http.StatusForbidden).
+				fmt.Sprintf(`{ "country_code":"+91", "phone_number":"%s" }`, twilioMagicPhoneHighRisk), http.StatusForbidden).
 			UnmarshalMap()
 
 		require.NotEmpty(t, responseMap)
@@ -120,10 +122,4 @@ func TestPhoneLookupMode(t *testing.T) {
 		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey])
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
-}
-
-func uniqueUKPhoneNumber() string {
-	// UK mobile numbers are 10 digits after country code; use a unique suffix to avoid phone-in-use conflicts
-	suffix := strings.ReplaceAll(uuid.Must(uuid.NewV4()).String(), "-", "")[:10]
-	return "77009" + suffix[len(suffix)-5:]
 }
