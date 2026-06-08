@@ -95,7 +95,7 @@ func TestPhoneLookupMode(t *testing.T) {
 					if us.Annotations == nil {
 						us.Annotations = map[string]string{}
 					}
-					us.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey] = `{"result":"rejected","phone_hash":"abc123"}`
+					us.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey] = `{"result":"rejected"}`
 				})
 		require.NoError(t, err)
 
