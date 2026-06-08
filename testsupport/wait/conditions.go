@@ -172,6 +172,16 @@ func Banned() []toolchainv1alpha1.Condition {
 	}
 }
 
+func Rejected() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: "Rejected",
+		},
+	}
+}
+
 func VerificationRequired() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{

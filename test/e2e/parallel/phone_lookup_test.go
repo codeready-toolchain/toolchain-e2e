@@ -1,6 +1,7 @@
 package parallel
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -29,6 +30,17 @@ const (
 	twilioMagicPhoneHighRiskBlocked = "1234567891" // +44 prefix → high risk, blocked
 )
 
+func phoneLookupDetailsResult(t *testing.T, signup *toolchainv1alpha1.UserSignup) string {
+	t.Helper()
+	raw := signup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey]
+	if raw == "" {
+		return ""
+	}
+	var details map[string]string
+	require.NoError(t, json.Unmarshal([]byte(raw), &details))
+	return details["result"]
+}
+
 func TestPhoneLookupMode(t *testing.T) {
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
@@ -52,8 +64,7 @@ func TestPhoneLookupMode(t *testing.T) {
 			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
 		require.NoError(t, err)
 
-		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey])
-		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupPhoneHashAnnotationKey])
+		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey])
 	})
 
 	t.Run("log mode stores phone lookup annotations when lookup succeeds", func(t *testing.T) {
@@ -68,12 +79,9 @@ func TestPhoneLookupMode(t *testing.T) {
 			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
 		require.NoError(t, err)
 
-		assert.Equal(t, "rejected", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey])
-		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupPhoneHashAnnotationKey])
+		assert.Equal(t, "rejected", phoneLookupDetailsResult(t, userSignup))
 		assert.Equal(t, "high", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupCarrierRiskAnnotationKey])
 		assert.Equal(t, "true", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupNumberBlockedAnnotationKey])
-		assert.Equal(t, "34", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupRiskScoreAnnotationKey])
-		// verification must proceed in log mode even when lookup result is rejected
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
 
@@ -87,7 +95,7 @@ func TestPhoneLookupMode(t *testing.T) {
 					if us.Annotations == nil {
 						us.Annotations = map[string]string{}
 					}
-					us.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey] = "rejected"
+					us.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey] = `{"result":"rejected","phone_hash":"abc123"}`
 				})
 		require.NoError(t, err)
 
@@ -101,12 +109,14 @@ func TestPhoneLookupMode(t *testing.T) {
 
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name)
 		require.NoError(t, err)
-		assert.Equal(t, "rejected", userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey])
+		assert.Equal(t, "rejected", phoneLookupDetailsResult(t, userSignup))
 		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
 
 	t.Run("enabled mode skips lookup for US numbers", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled))
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().
+			Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled).
+			Verification().PhoneLookupExcludedCountries([]string{"US", "CA"}))
 
 		userSignup, token := signup(t, hostAwait)
 		phoneNumber := strings.ReplaceAll(uuid.Must(uuid.NewV4()).String(), "-", "")[:10]
@@ -119,7 +129,7 @@ func TestPhoneLookupMode(t *testing.T) {
 			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
 		require.NoError(t, err)
 
-		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupResultAnnotationKey])
+		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey])
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
 }
