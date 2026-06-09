@@ -26,6 +26,7 @@ import (
 const (
 	twilioMagicPhoneHighRisk        = "1234567890" // +44 prefix → high risk, not blocked
 	twilioMagicPhoneHighRiskBlocked = "1234567891" // +44 prefix → high risk, blocked
+	usTestPhone                     = "2025550123" // +1 prefix → fictional NANPA 555-01XX range, safe with test credentials
 )
 
 func TestPhoneLookupMode(t *testing.T) {
@@ -88,10 +89,10 @@ func TestPhoneLookupMode(t *testing.T) {
 			Verification().PhoneLookupExcludedCountries([]string{"US", "CA"}))
 		userSignup, token := signup(t, hostAwait)
 
-		// when — use the magic number; US is excluded so lookup is never called
+		// when — US is excluded so lookup is never called
 		NewHTTPRequest(t).
 			InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token,
-				fmt.Sprintf(`{ "country_code":"+1", "phone_number":"%s" }`, twilioMagicPhoneHighRisk), http.StatusNoContent)
+				fmt.Sprintf(`{ "country_code":"+1", "phone_number":"%s" }`, usTestPhone), http.StatusNoContent)
 
 		// then
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
