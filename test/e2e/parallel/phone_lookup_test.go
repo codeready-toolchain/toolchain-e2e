@@ -30,11 +30,12 @@ const (
 )
 
 func TestPhoneLookupMode(t *testing.T) {
-	await := WaitForDeployments(t)
-	hostAwait := await.Host()
+	t.Parallel()
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
 	route := hostAwait.RegistrationServiceURL
 
-	t.Run("log mode stores phone lookup annotations when lookup succeeds", func(t *testing.T) {
+	t.Run("log mode stores annotations and user is provisioned", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeLog))
 		userSignup, token := signup(t, hostAwait)
@@ -44,7 +45,7 @@ func TestPhoneLookupMode(t *testing.T) {
 			InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token,
 				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, twilioMagicPhoneHighRiskBlocked), http.StatusNoContent)
 
-		// then
+		// then — verification code is set and lookup details are recorded
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
 		require.NoError(t, err)
@@ -52,6 +53,42 @@ func TestPhoneLookupMode(t *testing.T) {
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey])
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 		assert.False(t, states.Rejected(userSignup), "UserSignup should NOT be rejected in log mode")
+
+		// complete verification and confirm user is provisioned
+		NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s",
+			userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]), token, "", http.StatusOK)
+
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, hostAwait.Namespace,
+				func(instance *toolchainv1alpha1.UserSignup) {
+					states.SetApprovedManually(instance, true)
+				})
+		require.NoError(t, err)
+
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup)
+	})
+
+	t.Run("enabled mode rejects high-risk phone number", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().
+			Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled).
+			Verification().PhoneLookupExcludedCountries([]string{"US", "CA"}))
+		userSignup, token := signup(t, hostAwait)
+
+		// when
+		responseMap := NewHTTPRequest(t).
+			InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token,
+				fmt.Sprintf(`{ "country_code":"+44", "phone_number":"%s" }`, twilioMagicPhoneHighRiskBlocked), http.StatusForbidden).
+			UnmarshalMap()
+
+		// then
+		require.NotEmpty(t, responseMap)
+		assert.Equal(t, "Forbidden", responseMap["status"])
+
+		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name)
+		require.NoError(t, err)
+		assert.True(t, states.Rejected(userSignup), "UserSignup should be rejected in enabled mode with high-risk phone")
+		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
 
 	t.Run("enabled mode blocks verification for previously rejected signup", func(t *testing.T) {
@@ -82,7 +119,7 @@ func TestPhoneLookupMode(t *testing.T) {
 		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 	})
 
-	t.Run("enabled mode skips lookup for US numbers", func(t *testing.T) {
+	t.Run("enabled mode skips lookup for US numbers and user is provisioned", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().
 			Verification().PhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled).
@@ -101,5 +138,19 @@ func TestPhoneLookupMode(t *testing.T) {
 
 		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey])
 		assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
+		assert.False(t, states.Rejected(userSignup), "UserSignup should NOT be rejected for excluded country")
+
+		// complete verification and confirm user is provisioned
+		NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s",
+			userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]), token, "", http.StatusOK)
+
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, hostAwait.Namespace,
+				func(instance *toolchainv1alpha1.UserSignup) {
+					states.SetApprovedManually(instance, true)
+				})
+		require.NoError(t, err)
+
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup)
 	})
 }
