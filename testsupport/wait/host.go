@@ -484,6 +484,34 @@ func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCrite
 	}
 }
 
+// UntilUserSignupHasAnnotation returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has an annotation with the expected key and value
+func UntilUserSignupHasAnnotation(key, value string) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			actualValue, exist := actual.Annotations[key]
+			return exist && actualValue == value
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected UserSignup annotation '%s' to be '%s'\nbut it was '%s'", key, value, actual.Annotations[key])
+		},
+	}
+}
+
+// UntilUserSignupHasAnnotationNotEmpty returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has a non-empty annotation for the expected key
+func UntilUserSignupHasAnnotationNotEmpty(key string) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			actualValue, exist := actual.Annotations[key]
+			return exist && actualValue != ""
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected UserSignup annotation '%s' to be non-empty\nbut it was '%s'", key, actual.Annotations[key])
+		},
+	}
+}
+
 // UntilUserSignupHasLabel returns a `UserSignupWaitCriterion` which checks that the given
 // UserSignup has a `key` equal to the given `value`
 func UntilUserSignupHasLabel(key, value string) UserSignupWaitCriterion {
@@ -1693,6 +1721,25 @@ func UntilToolchainConfigHasVerificationEnabled(expected bool) ToolchainConfigWa
 			e, _ := yaml.Marshal(expected)
 			a, _ := yaml.Marshal(actual.Spec.Host.RegistrationService.Verification.Enabled)
 			return fmt.Sprintf("expected approval domains to contain: %s.\n\tactual: %s", e, a)
+		},
+	}
+}
+
+func UntilToolchainConfigHasPhoneLookupMode(expected toolchainv1alpha1.PhoneLookupMode) ToolchainConfigWaitCriterion {
+	return ToolchainConfigWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
+			mode := toolchainv1alpha1.PhoneLookupModeLog
+			if actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode != nil {
+				mode = *actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode
+			}
+			return mode == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
+			mode := toolchainv1alpha1.PhoneLookupModeLog
+			if actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode != nil {
+				mode = *actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode
+			}
+			return fmt.Sprintf("expected phoneLookupMode to be '%s'.\n\tactual: '%s'", expected, mode)
 		},
 	}
 }
