@@ -72,6 +72,15 @@ func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
 	if lp.Env == DevEnv || lp.Env == ProdEnv {
 		err := lp.NextBtn.Click()
 		require.NoError(t, err)
+
+		// After "Next", the SSO server validates the username before rendering the
+		// password form. This server-side call can be slow under load, so wait with
+		// a longer timeout than the default 30s to avoid intermittent failures.
+		err = lp.LoginPwLoc.WaitFor(playwright.LocatorWaitForOptions{
+			State:   playwright.WaitForSelectorStateVisible,
+			Timeout: playwright.Float(60000),
+		})
+		require.NoError(t, err)
 	}
 
 	err = lp.LoginPwLoc.Fill(loginPw)
