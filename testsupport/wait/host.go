@@ -1728,14 +1728,14 @@ func UntilToolchainConfigHasVerificationEnabled(expected bool) ToolchainConfigWa
 func UntilToolchainConfigHasPhoneLookupMode(expected toolchainv1alpha1.PhoneLookupMode) ToolchainConfigWaitCriterion {
 	return ToolchainConfigWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
-			mode := toolchainv1alpha1.PhoneLookupModeLog
+			mode := toolchainv1alpha1.PhoneLookupModeDisabled
 			if actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode != nil {
 				mode = *actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode
 			}
 			return mode == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
-			mode := toolchainv1alpha1.PhoneLookupModeLog
+			mode := toolchainv1alpha1.PhoneLookupModeDisabled
 			if actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode != nil {
 				mode = *actual.Spec.Host.RegistrationService.Verification.PhoneLookupMode
 			}
