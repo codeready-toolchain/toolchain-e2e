@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	sandboxui "github.com/codeready-toolchain/toolchain-e2e/testsupport/devsandbox-dashboard"
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 	"github.com/stretchr/testify/require"
 )
 

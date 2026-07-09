@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 

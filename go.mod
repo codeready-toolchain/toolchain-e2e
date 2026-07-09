@@ -33,7 +33,7 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/playwright-community/playwright-go v0.5200.0
+	github.com/mxschmitt/playwright-go v0.6100.0
 	github.com/spf13/viper v1.20.1
 )
 
@@ -48,7 +48,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
-	github.com/deckarep/golang-set/v2 v2.7.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.2 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
@@ -146,4 +146,4 @@ go 1.24.4
 
 toolchain go1.24.13
 
-tool github.com/playwright-community/playwright-go/cmd/playwright
+tool github.com/mxschmitt/playwright-go/cmd/playwright
