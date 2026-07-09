@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +58,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 
 	traceDirectory := getTraceDirectory(t)
 	opts.RecordVideo = &playwright.RecordVideo{
-		Dir: traceDirectory,
+		Dir: playwright.String(traceDirectory),
 	}
 
 	context, err := browser.NewContext(opts)
