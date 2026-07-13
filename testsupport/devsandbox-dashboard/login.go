@@ -3,6 +3,7 @@ package sandboxui
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,25 +135,25 @@ func (lp *LoginPage) waitForPasswordOrSSOError(t *testing.T) error {
 			return nil
 		}
 		if visible, _ := loginRequired.IsVisible(); visible {
-			return fmt.Errorf("SSO rejected username step: %q (username field was empty or Fill did not stick; see screenshot after-next)", ssoLoginRequiredText)
+			return fmt.Errorf("SSO rejected username step: %q (username field was empty or Fill did not stick; see failure diagnostics/video)", ssoLoginRequiredText)
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 	return fmt.Errorf("timed out waiting for password field after Next (also did not see %q)", ssoLoginRequiredText)
 }
 
-// waitForDashboardOrProfileGate waits for the dashboard header, or handles/fails
-// on the intermittent SSO "We need a little more information" profile page.
+// waitForDashboardOrProfileGate waits for the dashboard, or handles/fails on the
+// intermittent SSO "We need a little more information" profile page.
 func (lp *LoginPage) waitForDashboardOrProfileGate(t *testing.T) error {
 	t.Helper()
 	deadline := time.Now().Add(time.Duration(loginStepTimeoutMs) * time.Millisecond)
 	profileGate := lp.Page.GetByText(ssoProfileGateText)
+	// Prefer dashboard-specific text over a generic <header>, which SSO pages may also have.
+	dashboardMarker := lp.Page.GetByText("Developer Sandbox")
 	profileSubmitAttempted := false
 
 	for time.Now().Before(deadline) {
-		if visible, _ := lp.Header.IsVisible(); visible {
-			return nil
-		}
+		// Check profile gate before dashboard markers so an SSO <header> cannot mask it.
 		if visible, _ := profileGate.IsVisible(); visible {
 			if !profileSubmitAttempted {
 				if tryCompleteSSOProfile(t, lp.Page) {
@@ -160,16 +161,21 @@ func (lp *LoginPage) waitForDashboardOrProfileGate(t *testing.T) error {
 					time.Sleep(500 * time.Millisecond)
 					continue
 				}
-				return fmt.Errorf("SSO blocked login with profile completion page %q for the test user; complete the account profile offline or extend the login helper (see screenshot after-login)", ssoProfileGateText)
+				return fmt.Errorf("SSO blocked login with profile completion page %q for the test user; complete the account profile offline or extend the login helper (see failure diagnostics/video)", ssoProfileGateText)
 			}
 			// Submit already attempted; keep waiting for navigation away from the gate.
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		if visible, _ := dashboardMarker.IsVisible(); visible {
+			return nil
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 	if visible, _ := profileGate.IsVisible(); visible {
-		return fmt.Errorf("SSO profile completion page %q still present after login; complete the account profile offline (see screenshot after-login)", ssoProfileGateText)
+		return fmt.Errorf("SSO profile completion page %q still present after login; complete the account profile offline (see failure diagnostics/video)", ssoProfileGateText)
 	}
-	return fmt.Errorf("timed out waiting for dashboard header after login")
+	return fmt.Errorf("timed out waiting for dashboard after login")
 }
 
 // tryCompleteSSOProfile clicks a common continue/submit control if present on the
@@ -190,13 +196,21 @@ func tryCompleteSSOProfile(t *testing.T, page playwright.Page) bool {
 	return false
 }
 
-// dumpLoginFailure writes a screenshot and logs URL + a short page text snippet
-// so CI failures are diagnosable without downloading the webm.
+// dumpLoginFailure logs a redacted URL. Page text and screenshots are only
+// captured outside CI, matching Setup's policy of not retaining SSO-sensitive
+// Playwright traces when ARTIFACT_DIR is set. Failure videos may still be
+// retained separately by the video recorder.
 func dumpLoginFailure(t *testing.T, page playwright.Page, label string) {
 	t.Helper()
 
-	url := page.URL()
-	t.Logf("login failure (%s) page URL: %s", label, url)
+	t.Logf("login failure (%s) page URL: %s", label, redactURL(page.URL()))
+
+	// In CI, avoid logging SSO page body or writing screenshots that can include
+	// account details. Local runs keep full diagnostics for debugging.
+	if os.Getenv("ARTIFACT_DIR") != "" {
+		t.Logf("login failure (%s): skipping page text/screenshot in CI to avoid SSO data in artifacts", label)
+		return
+	}
 
 	if body, err := page.Locator("body").InnerText(); err == nil {
 		snippet := strings.Join(strings.Fields(body), " ")
@@ -219,4 +233,16 @@ func dumpLoginFailure(t *testing.T, page playwright.Page, label string) {
 		return
 	}
 	t.Logf("saved login failure screenshot to %s", path)
+}
+
+// redactURL returns scheme://host/path only, stripping query and fragment that
+// may contain OAuth/SSO parameters.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" {
+		return "<unparseable>"
+	}
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u.String()
 }

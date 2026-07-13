@@ -143,24 +143,18 @@ func handleCookiesConsent(t *testing.T, page playwright.Page) {
 		return
 	}
 
-	// TrustArc can show different modals; accept whichever known button is present.
-	agreeProceed := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
-		Name: "Agree and proceed with",
-	})
-	// US-state preference modal
-	acceptDefault := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
-		Name: "Accept default",
-	})
-	// "How we use cookies" variant seen in prod CI videos
-	acceptAll := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
-		Name: "Accept all",
-	})
-	consentButton := agreeProceed.Or(acceptDefault).Or(acceptAll)
-
-	IsVisible(t, consentButton)
-
-	err = consentButton.Click()
-	require.NoError(t, err)
+	// TrustArc can show different modals; try known buttons in priority order
+	// (Locator.Or is strict if more than one matches).
+	var clicked bool
+	for _, name := range []string{"Agree and proceed with", "Accept default", "Accept all"} {
+		btn := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{Name: name})
+		if visible, _ := btn.IsVisible(); visible {
+			require.NoError(t, btn.Click())
+			clicked = true
+			break
+		}
+	}
+	require.True(t, clicked, "TrustArc consent visible but no known accept button found")
 
 	// wait for the consent banner to disappear
 	err = consent.WaitFor(playwright.LocatorWaitForOptions{
