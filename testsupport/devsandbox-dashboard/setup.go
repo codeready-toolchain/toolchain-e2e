@@ -45,6 +45,9 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	baseURL := viper.GetString("BASE_URL")
 	username := viper.GetString("SSO_USERNAME")
 	password := viper.GetString("SSO_PASSWORD")
+	require.NotEmpty(t, baseURL, "BASE_URL must be set")
+	require.NotEmpty(t, username, "SSO_USERNAME must be set (check sandbox-test-kc / sandbox secrets mount)")
+	require.NotEmpty(t, password, "SSO_PASSWORD must be set (check sandbox-test-kc / sandbox secrets mount)")
 
 	pw, err := playwright.Run()
 	require.NoError(t, err)
@@ -114,28 +117,45 @@ func launchBrowser(t *testing.T, pw *playwright.Playwright) playwright.Browser {
 }
 
 func handleCookiesConsent(t *testing.T, page playwright.Page) {
+	// Short wait: consent is optional and must not burn 30s on every run when absent.
+	const consentWaitMs = 10000.0
+
 	// TrustArc renders as a div with a declarative shadow DOM, not a real iframe.
 	consent := page.Locator("div[name=\"trustarc_cm\"]")
 
 	err := consent.WaitFor(playwright.LocatorWaitForOptions{
-		State: playwright.WaitForSelectorStateVisible,
+		State:   playwright.WaitForSelectorStateVisible,
+		Timeout: playwright.Float(consentWaitMs),
 	})
 
 	if err != nil {
-		// no cookie consent appeared, skip
+		// Fallback: some regions show a "How we use cookies" banner with "Accept all"
+		// that is not always under div[name=trustarc_cm].
+		acceptAll := page.GetByRole("button", playwright.PageGetByRoleOptions{
+			Name: "Accept all",
+		})
+		if visible, _ := acceptAll.IsVisible(); visible {
+			require.NoError(t, acceptAll.Click())
+			_ = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+				State: playwright.LoadStateLoad,
+			})
+		}
 		return
 	}
 
-	// TrustArc can show different modals (e.g. full consent vs. simplified); accept whichever button is present.
+	// TrustArc can show different modals; accept whichever known button is present.
 	agreeProceed := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
 		Name: "Agree and proceed with",
 	})
-
-	// to some us states, like texas, it appears the "Cookie Preferences and Opt-Out Rights" modal
+	// US-state preference modal
 	acceptDefault := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
 		Name: "Accept default",
 	})
-	consentButton := agreeProceed.Or(acceptDefault)
+	// "How we use cookies" variant seen in prod CI videos
+	acceptAll := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{
+		Name: "Accept all",
+	})
+	consentButton := agreeProceed.Or(acceptDefault).Or(acceptAll)
 
 	IsVisible(t, consentButton)
 
