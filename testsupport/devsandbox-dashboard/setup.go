@@ -78,18 +78,21 @@ func Setup(t *testing.T, testName string) playwright.Page {
 
 	handleRecordedVideo(t, page, filepath.Join(traceDirectory, fmt.Sprintf("%s.webm", testName)))
 
+	// Dismiss TrustArc whenever it appears during navigate/login. Prod videos show the
+	// banner arriving mid-Fill and SSO remounting, which clears the username field.
+	installCookieDismissHandler(t, page)
+
 	login := NewLoginPage(page, env)
 	login.Navigate(t, baseURL)
 
 	if env == ProdEnv {
-		// handle cookie consent
-		// on prod environment, the cookie consent appears after the login page is loaded
+		// Best-effort dismiss if already visible before login starts.
 		handleCookiesConsent(t, page)
 	}
 
 	login.Login(t, username, password)
 
-	// handle cookie consent
+	// handle cookie consent after landing on the dashboard
 	handleCookiesConsent(t, page)
 
 	return page
@@ -129,32 +132,12 @@ func handleCookiesConsent(t *testing.T, page playwright.Page) {
 	})
 
 	if err != nil {
-		// Fallback: some regions show a "How we use cookies" banner with "Accept all"
-		// that is not always under div[name=trustarc_cm].
-		acceptAll := page.GetByRole("button", playwright.PageGetByRoleOptions{
-			Name: "Accept all",
-		})
-		if visible, _ := acceptAll.IsVisible(); visible {
-			require.NoError(t, acceptAll.Click())
-			_ = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
-				State: playwright.LoadStateLoad,
-			})
-		}
+		// Fallback: banner may not use trustarc_cm naming.
+		_ = clickCookieAcceptIfPresent(page)
 		return
 	}
 
-	// TrustArc can show different modals; try known buttons in priority order
-	// (Locator.Or is strict if more than one matches).
-	var clicked bool
-	for _, name := range []string{"Agree and proceed with", "Accept default", "Accept all"} {
-		btn := consent.GetByRole("button", playwright.LocatorGetByRoleOptions{Name: name})
-		if visible, _ := btn.IsVisible(); visible {
-			require.NoError(t, btn.Click())
-			clicked = true
-			break
-		}
-	}
-	require.True(t, clicked, "TrustArc consent visible but no known accept button found")
+	require.True(t, clickCookieAcceptIfPresent(page), "TrustArc consent visible but no known accept button found")
 
 	// wait for the consent banner to disappear
 	err = consent.WaitFor(playwright.LocatorWaitForOptions{
@@ -165,6 +148,45 @@ func handleCookiesConsent(t *testing.T, page playwright.Page) {
 	// wait for page to stabilize
 	err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
 		State: playwright.LoadStateLoad,
+	})
+	require.NoError(t, err)
+}
+
+// knownCookieAcceptButtons covers TrustArc variants seen in prod CI videos.
+var knownCookieAcceptButtons = []string{
+	"Accept default",
+	"Accept all",
+	"Agree and proceed with",
+	"Required Cookies only",
+}
+
+// clickCookieAcceptIfPresent clicks the first visible known TrustArc accept button.
+func clickCookieAcceptIfPresent(page playwright.Page) bool {
+	consent := page.Locator("div[name=\"trustarc_cm\"]")
+	for _, name := range knownCookieAcceptButtons {
+		// Prefer buttons scoped to the TrustArc container (shadow DOM), then page-wide.
+		for _, btn := range []playwright.Locator{
+			consent.GetByRole("button", playwright.LocatorGetByRoleOptions{Name: name}),
+			page.GetByRole("button", playwright.PageGetByRoleOptions{Name: name}),
+		} {
+			if visible, _ := btn.IsVisible(); visible {
+				if err := btn.Click(playwright.LocatorClickOptions{Timeout: playwright.Float(5000)}); err == nil {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// installCookieDismissHandler auto-dismisses TrustArc overlays that appear mid-login.
+// Without this, Fill(username) can stick briefly then be cleared when SSO remounts
+// after the cookie modal (see ci-daily-prod failure videos).
+func installCookieDismissHandler(t *testing.T, page playwright.Page) {
+	t.Helper()
+	consent := page.Locator("div[name=\"trustarc_cm\"]")
+	err := page.AddLocatorHandler(consent, func(_ playwright.Locator) {
+		_ = clickCookieAcceptIfPresent(page)
 	})
 	require.NoError(t, err)
 }

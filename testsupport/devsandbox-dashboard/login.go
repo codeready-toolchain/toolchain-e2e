@@ -89,13 +89,9 @@ func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
 	})
 	require.NoError(t, err, "username field not visible")
 
-	err = lp.LoginUsernameLoc.Fill(loginUsername)
-	require.NoError(t, err)
-
-	// Ensure Fill actually stuck before clicking Next (Mode A: empty field + validation error).
-	filled, err := lp.LoginUsernameLoc.InputValue()
-	require.NoError(t, err)
-	require.Equal(t, loginUsername, filled, "username field value after Fill did not match SSO_USERNAME")
+	// Cookie/SSO remount can clear the field right after Fill (prod CI videos show
+	// username briefly then empty before Next). Retry until the value sticks.
+	lp.fillUsernameStable(t, loginUsername)
 
 	if lp.Env == DevEnv || lp.Env == ProdEnv {
 		err := lp.NextBtn.Click()
@@ -121,6 +117,41 @@ func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
 	text, err := lp.Header.TextContent()
 	require.NoError(t, err)
 	assert.Contains(t, text, "Developer Sandbox")
+}
+
+// fillUsernameStable fills the username and re-fills if SSO/cookie remount clears it.
+func (lp *LoginPage) fillUsernameStable(t *testing.T, loginUsername string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Duration(loginStepTimeoutMs) * time.Millisecond)
+	const settle = 400 * time.Millisecond
+
+	for time.Now().Before(deadline) {
+		// Dismiss cookie if it appeared outside the locator handler path.
+		_ = clickCookieAcceptIfPresent(lp.Page)
+
+		err := lp.LoginUsernameLoc.Fill(loginUsername)
+		require.NoError(t, err)
+
+		time.Sleep(settle)
+
+		filled, err := lp.LoginUsernameLoc.InputValue()
+		require.NoError(t, err)
+		if filled != loginUsername {
+			t.Logf("username cleared after Fill (got %q); retrying after cookie/SSO settle", filled)
+			continue
+		}
+
+		// Confirm it remains after another short settle (covers late remount).
+		time.Sleep(settle)
+		filled, err = lp.LoginUsernameLoc.InputValue()
+		require.NoError(t, err)
+		if filled == loginUsername {
+			return
+		}
+		t.Logf("username cleared on second settle (got %q); retrying", filled)
+	}
+
+	require.Fail(t, "username would not stick in the Red Hat login field before Next")
 }
 
 // waitForPasswordOrSSOError waits until the password field is visible, or fails
