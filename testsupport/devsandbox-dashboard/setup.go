@@ -17,6 +17,9 @@ const (
 	TestEnv = "ui-e2e-tests"
 	DevEnv  = "dev"
 	ProdEnv = "prod"
+
+	// TrustArc cookie consent container (declarative shadow DOM, not an iframe).
+	trustArcConsentLocator = `div[name="trustarc_cm"]`
 )
 
 var (
@@ -124,7 +127,7 @@ func handleCookiesConsent(t *testing.T, page playwright.Page) {
 	const consentWaitMs = 10000.0
 
 	// TrustArc renders as a div with a declarative shadow DOM, not a real iframe.
-	consent := page.Locator("div[name=\"trustarc_cm\"]")
+	consent := page.Locator(trustArcConsentLocator)
 
 	err := consent.WaitFor(playwright.LocatorWaitForOptions{
 		State:   playwright.WaitForSelectorStateVisible,
@@ -162,7 +165,7 @@ var knownCookieAcceptButtons = []string{
 
 // clickCookieAcceptIfPresent clicks the first visible known TrustArc accept button.
 func clickCookieAcceptIfPresent(page playwright.Page) bool {
-	consent := page.Locator("div[name=\"trustarc_cm\"]")
+	consent := page.Locator(trustArcConsentLocator)
 	for _, name := range knownCookieAcceptButtons {
 		// Prefer buttons scoped to the TrustArc container (shadow DOM), then page-wide.
 		for _, btn := range []playwright.Locator{
@@ -184,7 +187,7 @@ func clickCookieAcceptIfPresent(page playwright.Page) bool {
 // after the cookie modal (see ci-daily-prod failure videos).
 func installCookieDismissHandler(t *testing.T, page playwright.Page) {
 	t.Helper()
-	consent := page.Locator("div[name=\"trustarc_cm\"]")
+	consent := page.Locator(trustArcConsentLocator)
 	err := page.AddLocatorHandler(consent, func(_ playwright.Locator) {
 		_ = clickCookieAcceptIfPresent(page)
 	})
