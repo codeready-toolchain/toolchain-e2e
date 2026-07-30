@@ -31,6 +31,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.21.0
 )
 
+replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20260729092753-942c2a240afd
+
+replace github.com/codeready-toolchain/toolchain-common => github.com/xcoulon/toolchain-common v0.0.0-20260729095937-9a89a4e2fae3
+
 require (
 	github.com/google/uuid v1.6.0
 	github.com/mxschmitt/playwright-go v0.6100.0
