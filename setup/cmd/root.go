@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/auth"
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/idlers"
@@ -138,6 +139,18 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		if len(pair)%2 == 1 {
 			term.Fatalf(err, "invalid workloads values provided '%v' - values must be namespace:name pairs", workloads)
 		}
+	}
+
+	transformedUsername := usersignup.TransformUsername(usernamePrefix, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	if transformedUsername != usernamePrefix {
+		term.Fatalf(fmt.Errorf("username prefix '%s' would be transformed to '%s' by Dev Sandbox username restrictions: "+
+			"must contain only lowercase alphanumeric characters or '-', "+
+			"must not start or end with '-', "+
+			"must not start with 'openshift', 'kube', 'default', 'redhat', or 'sandbox', "+
+			"must not end with 'admin', "+
+			"must not exceed 20 characters, "+
+			"and must not be numeric-only",
+			usernamePrefix, transformedUsername), "invalid username value '%s'", usernamePrefix)
 	}
 
 	// add the default user-workloads.yaml file automatically
