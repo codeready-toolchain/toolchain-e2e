@@ -1,0 +1,41 @@
+# Configure your Quay account for dev deployment
+
+There is a set of images that are built and pushed to quay repositories while deploying local versions of Toolchain
+(Sandbox) operators to OpenShift cluster. Please make sure that the repositories exist in your Quay.io account.
+
+## Repositories
+
+1. Register for a quay.io account if you don't have one and log in to the account.
+2. Go to the repository section, or click on the following link: https://quay.io/repository.
+3. Click on the "Create new repository" button.
+4. Select your personal namespace if it is not already selected for you, give the repository an appropriate name, and
+   choose "Public" as the repository's visibility.
+5. Click on "Create".
+
+Also, make sure that:
+
+1. You have set the `QUAY_NAMESPACE` environment variable so that any commands or tests you run use your personal Quay
+   repositories: `export QUAY_NAMESPACE=<quay-username>`
+2. You are logged in to your Quay.io account in Podman too with `podman login quay.io` for the same previous reason.
+3. You end up with the following **public** repositories in Quay:
+   * `https://quay.io/repository/<quay-username>/host-operator`
+   * `https://quay.io/repository/<quay-username>/host-operator-bundle`
+   * `https://quay.io/repository/<quay-username>/host-operator-index`
+   * `https://quay.io/repository/<quay-username>/member-operator`
+   * `https://quay.io/repository/<quay-username>/member-operator-webhook`
+   * `https://quay.io/repository/<quay-username>/member-operator-bundle`
+   * `https://quay.io/repository/<quay-username>/member-operator-index`
+   * `https://quay.io/repository/<quay-username>/registration-service`
+
+## Public visibility
+
+All aforementioned repositories have to be public, so make sure that the visibility is set to `public` for all of them:
+
+* `https://quay.io/repository/<quay-username>/host-operator?tab=settings`
+* `https://quay.io/repository/<quay-username>/host-operator-bundle?tab=settings`
+* `https://quay.io/repository/<quay-username>/host-operator-index?tab=settings`
+* `https://quay.io/repository/<quay-username>/member-operator?tab=settings`
+* `https://quay.io/repository/<quay-username>/member-operator-webhook?tab=settings`
+* `https://quay.io/repository/<quay-username>/member-operator-bundle?tab=settings`
+* `https://quay.io/repository/<quay-username>/member-operator-index?tab=settings`
+* `https://quay.io/repository/<quay-username>/registration-service?tab=settings`

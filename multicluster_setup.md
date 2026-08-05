@@ -1,30 +1,28 @@
-= Multi-Cluster Setup (This document is outdated!!!)
+# Multi-Cluster Setup (This document is outdated!!!)
 
 Prerequisites:
 
-You need to boostrap 2 clusters and make sure you have a `kubeconfig` file for each cluster in a dedicated/separate location.
+You need to bootstrap 2 clusters and make sure you have a `kubeconfig` file for each cluster in a dedicated/separate location.
 Also, make sure that you already ran the `oc --kubeconfig=<path_to_config> login` on each cluster.
 
-== Setting up the KUBECONFIG
+## Setting up the KUBECONFIG
 
-First, let's setup a single `KUBECONFIG` with multiple contexts. Assuming that `${HOST_CONFIG}` is the path to the `KUBECONFIG` file for your *Host* cluster, and `${MEMBER_CONFIG}` is the path to the `KUBECONFIG` file for your *Member* cluster:
+First, let's setup a single `KUBECONFIG` with multiple contexts. Assuming that `${HOST_CONFIG}` is the path to the `KUBECONFIG` file for your **Host** cluster, and `${MEMBER_CONFIG}` is the path to the `KUBECONFIG` file for your **Member** cluster:
 
-[source,bash]
-----
+```bash
 $ oc --kubeconfig ${HOST_CONFIG} config rename-context `oc --kubeconfig ${HOST_CONFIG} config current-context` host-admin
 
 $ oc --kubeconfig ${MEMBER_CONFIG} config rename-context `oc --kubeconfig ${MEMBER_CONFIG} config current-context` member-admin
 
 # join the 2 files to "generate" a single KUBECONFIG
 $ export KUBECONFIG=${HOST_CONFIG}:${MEMBER_CONFIG}
-----
+```
 
 At this point, we can switch the terminal connection from one cluster to another use the `oc config use-context host-admin` and `oc config use-context member-admin` commands.
 
 You can verify by yourself with:
 
-[source,bash]
-----
+```bash
 $ oc config use-context host-admin && oc whoami --show-server
 Switched to context "host-admin".
 https://api.<host_cluster_name>.devcluster.openshift.com:6443
@@ -32,40 +30,35 @@ https://api.<host_cluster_name>.devcluster.openshift.com:6443
 $ oc config use-context member-admin && oc whoami --show-server
 Switched to context "member-admin".
 https://api.<member_cluster_name>.devcluster.openshift.com:6443
-
-----
+```
 
 Once both contexts are configured, we can move on with the operator deployments, starting with the Host operator.
 
-[source,bash]
-----
-
+```bash
 $ export HOST_NS=toolchain-host-operator
 $ export REGISTRATION_SERVICE_NS=${HOST_NS}
 
 # deploy in the specific `toolchain-host-operator` namespace
 $ oc config use-context host-admin && HOST_NS=${HOST_NS} make get-host-and-reg-service deploy-host
-----
+```
 
 This will clone the remote https://github.com/codeready-toolchain/host-operator.git and https://github.com/codeready-toolchain/registration-service.git repositories in `/tmp/codeready-toolchain/` and build the operator and service from these temporary directories, then deploy the Host operator on the Host cluster.
 
 After a minute (or more), both `host-operator` and `registration-service` pods should be available:
 
-[source,bash]
-----
+```bash
 $ oc get pods -n ${HOST_NS}
 NAME                                    READY   STATUS    RESTARTS   AGE
 host-operator-...-...                   1/1     Running   0          ...
 registration-service-...-...            1/1     Running   0          ...
 registration-service-...-...            1/1     Running   0          ...
-----
+```
 
-== Member Cluster Setup
+## Member Cluster Setup
 
 The same logic as above is applied to deploy the Member operator on the Member cluster:
 
-[source,bash]
-----
+```bash
 $ export MEMBER_NS=toolchain-member-operator
 
 # on the member cluster, in the `toolchain-member-operator` namespace
@@ -75,16 +68,15 @@ $ oc config use-context member-admin && MEMBER_NS_TO_DEPLOY=${MEMBER_NS} make ge
 $ oc get pods -n ${MEMBER_NS}
 NAME                               READY   STATUS    RESTARTS   AGE
 member-operator-...-...            1/1     Running   0          ...
-----
+```
 
-== Configuring the Operators
+## Configuring the Operators
 
 Once Host and Member operators have been deployed on their respective cluster, they need to be configured to communicate with each other.
 
 At this stage, each operator has its own status resource, which is in a `Ready=False` status, because the host-member connection is not set yet:
 
-[source,bash]
-----
+```bash
 # on the host cluster
 $ oc config use-context host-admin && oc get toolchainstatus -n ${HOST_NS}
 NAME               READY   LAST UPDATED
@@ -94,10 +86,9 @@ toolchain-status   False   ...
 $ oc config use-context member-admin && oc get memberstatus -n ${MEMBER_NS}
 NAME                      READY   LAST UPDATED
 toolchain-member-status   False   ...
-----
+```
 
-[source,bash]
-----
+```bash
 # create/configure the ToolchainCluster resources on host and member clusters
 $ ksctl adm register-member --host-ns="${HOST_NS}" --member-ns="${MEMBER_NS}" --host-kubeconfig="${HOME}/.kube/host-config" --member-kubeconfig="${HOME}/.kube/member-config"
 
@@ -121,17 +112,16 @@ $ oc config use-context member-admin && oc get toolchainclusters -n ${MEMBER_NS}
 Switched to context "member-admin".
 NAME                               AGE   READY
 host-...                           ...   True
-----
+```
 
 At this point, Host and Member clusters are ready to use.
 
-[source,bash]
-----
+```bash
 $ oc config use-context host-admin && oc project ${HOST_NS}
 Switched to context "host-admin".
 Now using project "toolchain-host-operator" on server ...
 
 $ HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace toolchain-e2e --verbose --go-test-flags "-test.timeout=30m -test.failfast -run TestE2E -v"
-----
+```
 
 Have fun!

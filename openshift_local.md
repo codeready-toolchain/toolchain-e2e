@@ -1,9 +1,7 @@
-:imagesdir: doc/images
+# Setting up OpenShift Local (formerly CRC, CodeReady Containers) — Step-by-step guide
 
-== Setting up OpenShift Local (formerly CRC, CodeReady Containers) — Step-by-step guide
-
-IMPORTANT: OpenShift Local includes an embedded system bundle that contains certificates which expire 30 days
-after the release. Because of this it is very important to always run the latest release of OpenShift Local.
+> **Important:** OpenShift Local includes an embedded system bundle that contains certificates which expire 30 days
+> after the release. Because of this it is very important to always run the latest release of OpenShift Local.
 
 OpenShift Local is a distribution of OpenShift designed to be run on a development PC, and while some features have
 been disabled by default it is still quite demanding in terms of system resources, and for this reason it is
@@ -12,50 +10,47 @@ recommended that it be installed on a machine that has at least 32GB of memory.
 This guide will walk through the steps of downloading and installing OpenShift Local, and running the e2e tests against
 local CodeReady Toolchain `host-operator` and `member-operator` repositories.
 
-=== Install the required tools
+## Install the required tools
 
-Please check the xref:required_tools.adoc[Required Tools] page and install those tools and utilities before proceeding,
+Please check the [Required Tools](required_tools.md) page and install those tools and utilities before proceeding,
 as otherwise you will experience test failures and having to restart the tests from the beginning.
 
-=== Download and install OpenShift Local
-Download OpenShift Local from https://developers.redhat.com/products/openshift-local/overview[developers.redhat.com].
+## Download and install OpenShift Local
+
+Download OpenShift Local from [developers.redhat.com](https://developers.redhat.com/products/openshift-local/overview).
 You will need to log in using your Red Hat SSO account, after which you may click on the `Install OpenShift on your
 laptop` button which will take you to the download page for OpenShift Local. From here, select your OS before clicking
 `Download OpenShift Local`. You will also need to download your pull secret, and keep that in a safe place.
 
-image::openshift_local_download.png[align="center"]
+![OpenShift Local download](doc/images/openshift_local_download.png)
 
 Extract the downloaded file into a directory of your choice:
 
-[source,bash]
-----
+```bash
 tar -xvf crc-linux-amd64.tar.xz
-----
+```
 
 Give execution permissions to the binary and move it to a directory on your path or `/usr/local/bin`:
 
-[source,bash]
-----
+```bash
 chmod u+x crc
 sudo mv crc /usr/local/bin
-----
+```
 
-=== Set up the cluster and enable or tweak the cluster's settings
+## Set up the cluster and enable or tweak the cluster's settings
 
 You need to set up the OpenShift Local cluster — the daemons, configurations and basic settings for it to be able to
 run — by running the command below. You only need to do it the first time you're setting up the cluster or after
 running `crc cleanup`:
 
-[source,bash]
-----
+```bash
 crc setup
-----
+```
 
 Also, in order to run the tests seamlessly and without any problems, there is a set of settings you are advised to
 change:
 
-[source,bash]
-----
+```bash
 # Cluster monitoring is required for the tests to pass
 crc config set enable-cluster-monitoring true
 
@@ -64,33 +59,32 @@ crc config set enable-cluster-monitoring true
 crc config set cpus 6
 crc config set disk-size 50
 crc config set memory 14500 # in MB. You can also use 20000 for 20GB, to be safer.
-----
+```
 
 Now you can go ahead and start the cluster. The first time you will need to provide the pull secret you were presented
 with in the OpenShift Local download page — if you didn't grab it you can come back and copy it. Run the following
 command to start the cluster:
 
-[source,bash]
-----
+```bash
 crc start
-----
+```
 
 While your local OpenShift cluster boots, you can go ahead and prepare the Quay repositories to be able to run the
 tests.
 
-=== Final configurations
-==== Creating the Quay repositories and making them public
+## Final configurations
 
-Please follow the steps in the xref:quay.adoc["Configure your Quay account for dev deployment"] document to set up the
+### Creating the Quay repositories and making them public
+
+Please follow the steps in the [Configure your Quay account for dev deployment](quay.md) document to set up the
 Quay repositories, and then come back to this guide.
 
-==== Logging in to your cluster and Quay
+### Logging in to your cluster and Quay
 
 After some time has passed, the local OpenShift cluster might be ready to work with. The terminal should show an output
 similar to the following one:
 
-[source,text]
-----
+```text
 INFO Using bundle path /home/${USER}/.crc/cache/crc_libvirt_4.19.8_amd64.crcbundle
 INFO Checking if running as non-root
 INFO Checking if running inside WSL2
@@ -175,52 +169,47 @@ Log in as user:
 Use the 'oc' command line interface:
   $ eval $(crc oc-env)
   $ oc login -u developer https://api.crc.testing:6443
-----
+```
 
 Add the `oc` executable to your current path by running the following command:
 
-[source,bash]
-----
+```bash
 eval $(crc oc-env)
-----
+```
 
-Now, log in as the *kubeadmin* user, since you need the required privileges to manage namespaces, install operators,
+Now, log in as the **kubeadmin** user, since you need the required privileges to manage namespaces, install operators,
 clean up resources and what not. Your login command should look something similar to this:
 
-[source,bash]
-----
+```bash
 oc login -u kubeadmin -p ${KUBEADMIN_PASSWORD} https://api.crc.testing:6443
-----
+```
 
 Also, make sure you're logged in to Quay with Podman:
 
-[source,bash]
-----
+```bash
 podman login quay.io
-----
+```
 
-==== Running the tests
+### Running the tests
 
-Please follow the steps in xref:README.adoc#_running_end_to_end_tests["README § Running End-to-End tests"] to set up
+Please follow the steps in [README - Running End-to-End Tests](README.md#running-end-to-end-tests) to set up
 the local operator repositories — if any — and run the tests.
 
-=== Cleaning up
+## Cleaning up
 
 After a run, regardless of whether it was successful or not, you can — and it is recommended to — run the following
 target to clean up the resources in the local OpenShift cluster:
 
-[source,bash]
-----
+```bash
 make clean-e2e-resources
-----
+```
 
 If for some reason the cleaning up of the resources gets stuck, you can run the following target before running the
 "clean" target again to remove the finalizers that prevent the cleanup:
 
-[source,bash]
-----
+```bash
 make force-remove-finalizers-from-e2e-resources
 
 # Rerun the cleanup again.
 make clean-e2e-resources
-----
+```

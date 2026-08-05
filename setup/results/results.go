@@ -82,5 +82,5 @@ func (r *Results) OutputResults() {
 		r.term.Fatalf(err, "failed to write results")
 	}
 
-	r.term.Infof("\nResults file: " + cfg.ResultsFilepath())
+	r.term.Info("\nResults file: " + cfg.ResultsFilepath())
 }

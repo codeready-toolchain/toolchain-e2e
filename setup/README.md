@@ -1,0 +1,171 @@
+# Dev Sandbox Performance Testing
+
+This document describes how to use the setup tool to set up a Dev Sandbox environment that is similar to production and is used as part of an onboarding process for new operators.
+
+## Prereqs
+
+1. Ensure your go version matches the specified version in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/go.mod
+
+2. Provision the **latest available** GA version of **OCP 4.21.x** on AWS with sufficient resources: 3 `m5.8xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
+
+   The latest version of openshift-install can be downloaded from https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
+
+   For example, if using the openshift-install tool to install OCP on AWS you can create an install-config.yaml file that has the following configuration:
+
+   ```yaml
+   apiVersion: v1
+   baseDomain: devcluster.openshift.com
+   controlPlane:
+     hyperthreading: Enabled
+     name: master
+     platform:
+       aws:
+         type: "m5.8xlarge"
+     replicas: 3
+   compute:
+   - hyperthreading: Enabled
+     name: worker
+     platform:
+       aws:
+         type: "m5.2xlarge"
+     replicas: 3
+   metadata:
+     name: sandbox-test
+   networking:
+     clusterNetwork:
+     - cidr: 10.128.0.0/14
+       hostPrefix: 23
+     machineNetwork:
+     - cidr: 10.0.0.0/16
+     networkType: OVNKubernetes
+     serviceNetwork:
+     - 172.30.0.0/16
+   platform:
+     aws:
+       region: us-east-1
+   publish: External
+   ```
+
+3. Log in to the cluster using `oc login --token=<token> --server=<server>`, this is required for the tool to interact with the cluster and gather metrics during the run.
+   1. Login to the cluster's OpenShift console using `kubeadmin` user
+   2. Click the user dropdown menu on the top right of the screen
+   3. Select "Copy login command"
+   4. Copy the oc login command with token and run the command in your terminal before proceeding running the setup tool
+   5. Note: You may need to include `--insecure-skip-tls-verify=true` when running the oc login command.
+
+4. Install the [required tools](https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.md).
+
+5. Install the onboarding operator(s) manually. Other operators that have already been onboarded will be installed automatically by the tool.
+
+6. Create an OpenShift template file (onboarding.yaml) that defines resources for testing the performance of your onboarding operator and any other resources that users typically create when using your operator. A Dev Sandbox template is provided with a default set of resources to help mimic a Dev Sandbox production environment [user-workloads.yaml](https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml).
+
+   The setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
+
+   Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
+   Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
+
+## Dev Sandbox Operators Setup
+
+1. Clone this repository
+
+   ```
+   git clone git@github.com:codeready-toolchain/toolchain-e2e.git
+   ```
+
+2. Run the following to install the Dev Sandbox operators
+
+   ```
+   make dev-deploy-latest
+   ```
+
+3. Run the following command and ensure the Ready status is `True`
+
+   ```
+   oc get toolchainstatus -n toolchain-host-operator
+   ```
+
+   ```
+   NAME               MURS   READY   LAST UPDATED
+   toolchain-status   0      True    2021-03-24T22:39:36Z
+   ```
+
+## Provisioning Test Users And Capturing Metrics
+
+**IMPORTANT: Performance results may be skewed when a fresh cluster is not used. Results for performance comparison and operator onboarding purposes should be captured using a fresh cluster.**
+
+1. Log in to the cluster using the `kubeadmin` user via `oc login --token=<token> --server=<server>` if you haven't already done so.
+
+2. Run the setup with a single user to verify all the operators can be installed and capture metrics after installing all operators but before provisioning the 2000 users.
+
+   ```
+   go run setup/main.go --users 1 --default 1 --custom 0 --username setup
+   ```
+
+   After the command completes it will print performance metrics that can be used for comparison against the baseline metrics. The results are saved to a .csv file to make it easier to copy the results into the spreadsheet.
+
+   Add the results to the Onboarding Performance Checklist spreadsheet in the `Onboarding Operator 1 user` column.
+
+3. Populate the cluster with 2000 users along with default and custom resources for each user.
+
+   Run the following command to create 2000 users
+
+   ```
+   go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 2000 --default 2000 --custom 2000 --username cupcake --workloads namespace:deploymentName
+   ```
+
+   Note 1: You do not need to add the default template ([setup/resources/user-workloads.yaml](https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml)), it is automatically added when you run the setup. You can control how many users will have the default template applied using the `--default` flag.
+
+   Note 2: The `--workloads` flag tells the tool to capture the CPU and memory of a deployment and include the results in the summary upon completion of the setup. Use this for including any deployments related to the onboarding operator. The format must follow `--workloads namespace:name`
+
+   Note 3: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason.
+
+   Note 4: If your workload is provisioning pods into the user's namespaces the Sandbox operator will delete the pod after an idle timeout of 15 seconds by default. This idle timeout can be configured by setting the `--idler-timeout` parameter like `--idler-timeout 5m` if you want your pods to remain active for longer.
+
+   Use `go run setup/main.go --help` to see the full set of options.
+
+4. Grab some coffee, populating the cluster with 2000 users usually takes about an hour but can take longer depending on network latency.
+
+   Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <num_users_default_user_workloads_template> --custom <num_users_custom_user_workloads_template>`
+
+5. After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.
+
+   Copy these values to the Onboarding Performance Checklist spreadsheet. Add the results to the `Onboarding Operator 2k users` column. The results are saved to a .csv file to make it easier to copy the results into the spreadsheet.
+
+### Evaluate the Cluster and Operator(s)
+
+Wait until all users have been created in the previous step. With the cluster now fully under load, it's time to evaluate the environment.
+
+1. Use your operators as a user would and evaluate the performance.
+2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
+3. Monitor the memory usage of operators. There are many more resources created on this cluster than most operators have been tested with so it's important to look for any possible areas of concern.
+4. Compare the Results summary to the Baseline metrics provided in the onboarding doc.
+
+## Clean up
+
+### Remove Only Users and Their Namespaces
+
+```
+make clean-users
+```
+
+**Note: If rerunning the tool for performance comparison purposes a fresh cluster should be used to maintain accuracy.**
+
+### Remove All Sandbox-related Resources
+
+```
+make clean-e2e-resources
+```
+
+## Baseline Runs (Done by the Sandbox team)
+
+1. Install operators
+
+   ```
+   go run setup/main.go --users 1 --default 1 --custom 0 --username baseline --testname=baseline
+   ```
+
+2. Run setup for 2000 users
+
+   ```
+   go run setup/main.go --users 2000 --default 2000 --custom 0 --username cupcake --testname=run1
+   ```
