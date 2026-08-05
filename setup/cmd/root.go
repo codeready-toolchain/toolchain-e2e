@@ -155,9 +155,9 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 			tokenRequestURI, err := auth.GetTokenRequestURI(cl)
 			errMsg := "a token is required to capture metrics, use oc login with token to log into the cluster. eg. `oc login --token=<token> --server=<server>`"
 			if err != nil {
-				term.Fatalf(err, errMsg)
+				term.Fatal(err, errMsg)
 			}
-			term.Fatalf(fmt.Errorf("a token can be requested from %s", tokenRequestURI), errMsg)
+			term.Fatal(fmt.Errorf("a token can be requested from %s", tokenRequestURI), errMsg)
 		}
 	}
 
