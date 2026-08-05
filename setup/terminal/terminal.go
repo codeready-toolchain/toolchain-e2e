@@ -16,11 +16,14 @@ import (
 type Terminal interface {
 	InOrStdin() io.Reader
 	OutOrStdout() io.Writer
-	Debugf(msg string, args ...interface{})
-	Infof(msg string, args ...interface{})
-	Errorf(err error, msg string, args ...interface{})
-	Fatalf(err error, msg string, args ...interface{})
-	PromptBoolf(msg string, args ...interface{}) bool
+	Debugf(msg string, args ...any)
+	Info(msg string)
+	Infof(msg string, args ...any)
+	Error(err error, msg string)
+	Errorf(err error, msg string, args ...any)
+	Fatal(err error, msg string)
+	Fatalf(err error, msg string, args ...any)
+	PromptBoolf(msg string, args ...any) bool
 	AddPreFatalExitHook(func())
 }
 
@@ -54,7 +57,7 @@ type DefaultTerminal struct {
 }
 
 // Debugf prints a message (if verbose was enabled)
-func (t *DefaultTerminal) Debugf(msg string, args ...interface{}) {
+func (t *DefaultTerminal) Debugf(msg string, args ...any) {
 	if !t.verbose {
 		return
 	}
@@ -65,8 +68,17 @@ func (t *DefaultTerminal) Debugf(msg string, args ...interface{}) {
 	fmt.Fprintln(t.OutOrStdout(), fmt.Sprintf(msg, args...))
 }
 
+// Info	 displays a message with the default color
+func (t *DefaultTerminal) Info(msg string) {
+	if msg == "" {
+		fmt.Fprintln(t.OutOrStdout(), "")
+		return
+	}
+	fmt.Fprintln(t.OutOrStdout(), msg)
+}
+
 // Infof displays a message with the default color
-func (t *DefaultTerminal) Infof(msg string, args ...interface{}) {
+func (t *DefaultTerminal) Infof(msg string, args ...any) {
 	if msg == "" {
 		fmt.Fprintln(t.OutOrStdout(), "")
 		return
@@ -75,12 +87,26 @@ func (t *DefaultTerminal) Infof(msg string, args ...interface{}) {
 }
 
 // Errorf prints a message with the red color
-func (t *DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
+func (t *DefaultTerminal) Error(err error, msg string) {
+	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", msg, err.Error())) // nolint:errcheck
+}
+
+// Errorf prints a message with the red color
+func (t *DefaultTerminal) Errorf(err error, msg string, args ...any) {
 	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", fmt.Sprintf(msg, args...), err.Error())) // nolint:errcheck
 }
 
+// Fatal prints a message with the red color and exits the program with a `1` return code
+func (t *DefaultTerminal) Fatal(err error, msg string) {
+	defer os.Exit(1)
+	for _, hook := range t.fatalExitHooks {
+		hook()
+	}
+	t.Error(err, msg)
+}
+
 // Fatalf prints a message with the red color and exits the program with a `1` return code
-func (t *DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
+func (t *DefaultTerminal) Fatalf(err error, msg string, args ...any) {
 	defer os.Exit(1)
 	for _, hook := range t.fatalExitHooks {
 		hook()
@@ -89,7 +115,7 @@ func (t *DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
 }
 
 // PromptBoolf prints a message and waits for the user's boolean response
-func (t *DefaultTerminal) PromptBoolf(msg string, args ...interface{}) bool {
+func (t *DefaultTerminal) PromptBoolf(msg string, args ...any) bool {
 	fmt.Fprintln(t.OutOrStdout(), fmt.Sprintf(msg, args...))
 	t.InOrStdin()
 

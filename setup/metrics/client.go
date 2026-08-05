@@ -30,6 +30,12 @@ func Client(address, token string) (api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return nil, fmt.Errorf("unsupported scheme %q in address %q", u.Scheme, address)
+	}
+	if u.Host == "" {
+		return nil, fmt.Errorf("missing host in address %q", address)
+	}
 	u.Path = strings.TrimRight(u.Path, "/")
 
 	cl := http.Client{
@@ -65,7 +71,10 @@ func (c *httpClient) Do(ctx context.Context, req *http.Request) (*http.Response,
 		req = req.WithContext(ctx)
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	resp, err := c.client.Do(req)
+	if req.URL.Scheme != "https" && req.URL.Scheme != "http" {
+		return nil, nil, fmt.Errorf("unsupported scheme %q in request URL", req.URL.Scheme)
+	}
+	resp, err := c.client.Do(req) // nolint:gosec
 	defer func() {
 		if resp != nil {
 			resp.Body.Close()
