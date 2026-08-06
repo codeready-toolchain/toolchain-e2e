@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -237,11 +238,16 @@ func TestComputeResultsZeroSamples(t *testing.T) {
 
 type noopTerminal struct{}
 
+var _ terminal.Terminal = &noopTerminal{}
+
 func (t *noopTerminal) InOrStdin() io.Reader                              { return nil }
 func (t *noopTerminal) OutOrStdout() io.Writer                            { return io.Discard }
 func (t *noopTerminal) Debugf(msg string, args ...interface{})            {}
+func (t *noopTerminal) Info(msg string)                                   {}
 func (t *noopTerminal) Infof(msg string, args ...interface{})             {}
+func (t *noopTerminal) Error(err error, msg string)                       {}
 func (t *noopTerminal) Errorf(err error, msg string, args ...interface{}) {}
 func (t *noopTerminal) Fatalf(err error, msg string, args ...interface{}) { panic("unexpected Fatalf") }
+func (t *noopTerminal) Fatal(err error, msg string)                       { panic("unexpected Fatal") }
 func (t *noopTerminal) PromptBoolf(msg string, args ...interface{}) bool  { return false }
 func (t *noopTerminal) AddPreFatalExitHook(func())                        {}
