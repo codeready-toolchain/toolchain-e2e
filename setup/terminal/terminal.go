@@ -68,7 +68,7 @@ func (t *DefaultTerminal) Debugf(msg string, args ...any) {
 	fmt.Fprintln(t.OutOrStdout(), fmt.Sprintf(msg, args...))
 }
 
-// Info	 displays a message with the default color
+// Info displays a message with the default color
 func (t *DefaultTerminal) Info(msg string) {
 	if msg == "" {
 		fmt.Fprintln(t.OutOrStdout(), "")
@@ -86,7 +86,7 @@ func (t *DefaultTerminal) Infof(msg string, args ...any) {
 	fmt.Fprintln(t.OutOrStdout(), fmt.Sprintf(msg, args...))
 }
 
-// Errorf prints a message with the red color
+// Error prints a message with the red color
 func (t *DefaultTerminal) Error(err error, msg string) {
 	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", msg, err.Error())) // nolint:errcheck
 }
