@@ -590,7 +590,7 @@ func (a *clawTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaClaw(),
 		numberOfClusterResourceQuotas(1),
-		idlers(43200, "claw"))
+		idlers(0, "claw"))
 }
 
 func clusterResourceQuotaClaw() clusterObjectsCheckCreator {

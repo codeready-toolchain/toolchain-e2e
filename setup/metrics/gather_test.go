@@ -2,10 +2,12 @@ package metrics
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -17,6 +19,18 @@ func TestExecuteQueryAndProcessResult(t *testing.T) {
 	var testTime = model.Now()
 
 	tests := []testcase{
+		{
+			query: testQuery{
+				name: "empty vector",
+				sample: queryResult{
+					val: model.Vector{},
+				},
+			},
+			exp: expected{
+				err:       "metrics value could not be retrieved for query empty vector",
+				resultLen: 0,
+			},
+		},
 		{
 			query: testQuery{
 				name: "first sample",
@@ -190,3 +204,50 @@ func (q testQuery) Execute() (model.Value, prometheus.Warnings, error) {
 func (q testQuery) ResultType() string {
 	return "memory"
 }
+
+func TestAvgZeroSamples(t *testing.T) {
+	// given
+	r := aggregateResult{sampleCount: 0, sum: 0, max: 0}
+
+	// when
+	result := r.avg()
+
+	// then
+	require.InDelta(t, float64(0), result, 0.01)
+}
+
+func TestComputeResultsZeroSamples(t *testing.T) {
+	// given
+	q := testQuery{name: "zero sample metric"}
+	g := &Gatherer{
+		mqueries: []queries.Query{q},
+		results:  map[string]aggregateResult{"zero sample metric": {}},
+		term:     &noopTerminal{},
+	}
+
+	// when
+	tuples := g.ComputeResults()
+
+	// then
+	require.Len(t, tuples, 2)
+	require.Equal(t, "Average zero sample metric (MB)", tuples[0][0])
+	require.Equal(t, "0.00", tuples[0][1])
+	require.Equal(t, "Max zero sample metric (MB)", tuples[1][0])
+	require.Equal(t, "0.00", tuples[1][1])
+}
+
+type noopTerminal struct{}
+
+var _ terminal.Terminal = &noopTerminal{}
+
+func (t *noopTerminal) InOrStdin() io.Reader                              { return nil }
+func (t *noopTerminal) OutOrStdout() io.Writer                            { return io.Discard }
+func (t *noopTerminal) Debugf(msg string, args ...interface{})            {}
+func (t *noopTerminal) Info(msg string)                                   {}
+func (t *noopTerminal) Infof(msg string, args ...interface{})             {}
+func (t *noopTerminal) Error(err error, msg string)                       {}
+func (t *noopTerminal) Errorf(err error, msg string, args ...interface{}) {}
+func (t *noopTerminal) Fatalf(err error, msg string, args ...interface{}) { panic("unexpected Fatalf") }
+func (t *noopTerminal) Fatal(err error, msg string)                       { panic("unexpected Fatal") }
+func (t *noopTerminal) PromptBoolf(msg string, args ...interface{}) bool  { return false }
+func (t *noopTerminal) AddPreFatalExitHook(func())                        {}
