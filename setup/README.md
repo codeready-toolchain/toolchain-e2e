@@ -55,15 +55,6 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
 
 4. Install the [required tools](https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.md).
 
-5. Install the onboarding operator(s) manually. Other operators that have already been onboarded will be installed automatically by the tool.
-
-6. Create an OpenShift template file (onboarding.yaml) that defines resources for testing the performance of your onboarding operator and any other resources that users typically create when using your operator. A Dev Sandbox template is provided with a default set of resources to help mimic a Dev Sandbox production environment [user-workloads.yaml](https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml).
-
-   The setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
-
-   Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
-   Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
-
 ## Dev Sandbox Operators Setup
 
 1. Clone this repository
@@ -89,6 +80,18 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
    toolchain-status   0      True    2021-03-24T22:39:36Z
    ```
 
+## Install onboarding operator and create operator resource template
+
+1. Install the onboarding operator(s) manually. Other operators that have already been onboarded will be installed automatically by the tool.
+
+2. Create an OpenShift template file (onboarding.yaml) that defines resources for testing the performance of your onboarding operator and any other resources that users typically create when using your operator. A Dev Sandbox template is provided with a default set of resources to help mimic a Dev Sandbox production environment [user-workloads.yaml](https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml).
+
+   The setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
+
+   Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
+   Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
+   
+
 ## Provisioning Test Users And Capturing Metrics
 
 **IMPORTANT: Performance results may be skewed when a fresh cluster is not used. Results for performance comparison and operator onboarding purposes should be captured using a fresh cluster.**
@@ -98,7 +101,7 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
 2. Run the setup with a single user to verify all the operators can be installed and capture metrics after installing all operators but before provisioning the 2000 users.
 
    ```
-   go run setup/main.go --users 1 --default 1 --custom 0 --username setup
+   go run setup/main.go --users 1 --default 1 --custom 0 --username setup --workloads namespace:operatorDeploymentName
    ```
 
    After the command completes it will print performance metrics that can be used for comparison against the baseline metrics. The results are saved to a .csv file to make it easier to copy the results into the spreadsheet.
@@ -110,7 +113,7 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
    Run the following command to create 2000 users
 
    ```
-   go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 2000 --default 2000 --custom 2000 --username cupcake --workloads namespace:deploymentName
+   go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 2000 --default 2000 --custom 2000 --username cupcake --workloads namespace:operatorDeploymentName
    ```
 
    Note 1: You do not need to add the default template ([setup/resources/user-workloads.yaml](https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml)), it is automatically added when you run the setup. You can control how many users will have the default template applied using the `--default` flag.
