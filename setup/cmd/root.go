@@ -231,8 +231,12 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 
 		term.Infof("⏳ applying post-install templates...")
 		postInstallPaths := []string{}
-		for i := 0; i < len(operators.PostInstallTemplates); i++ {
-			postInstallPaths = append(postInstallPaths, "setup/operators/post-install/"+operators.PostInstallTemplates[i])
+		for i := 0; i < operatorsLimit; i++ {
+			for _, postInstallTemplate := range operators.PostInstallTemplates {
+				if postInstallTemplate == operators.Templates[i] {
+					postInstallPaths = append(postInstallPaths, "setup/operators/post-install/"+postInstallTemplate)
+				}
+			}
 		}
 		if err := operators.ApplyPostInstallTemplates(cmd.Context(), cl, scheme, postInstallPaths); err != nil {
 			term.Fatalf(err, "failed to apply post-install templates")

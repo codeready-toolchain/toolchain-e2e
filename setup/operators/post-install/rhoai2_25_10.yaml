@@ -67,7 +67,7 @@ objects:
     kind: OdhDashboardConfig
     metadata:
       name: odh-dashboard-config
-      namespace: ${RHOAI_NAMESPACE}
+      namespace: redhat-ods-applications
     spec:
       dashboardConfig:
         enablement: true
@@ -142,6 +142,3 @@ objects:
               memory: 16Gi
       templateDisablement: []
       templateOrder: []
-parameters:
-  - name: RHOAI_NAMESPACE
-    value: redhat-ods-operator
