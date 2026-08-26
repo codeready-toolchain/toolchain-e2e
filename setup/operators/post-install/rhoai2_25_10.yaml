@@ -1,0 +1,147 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhoai2_25_10-post-install
+objects:
+  - kind: DSCInitialization
+    apiVersion: dscinitialization.opendatahub.io/v1
+    metadata:
+      name: default-dsci
+    spec:
+      applicationsNamespace: redhat-ods-applications
+      monitoring:
+        managementState: Managed
+        namespace: redhat-ods-monitoring
+      serviceMesh:
+        auth:
+          audiences:
+            - 'https://kubernetes.default.svc'
+        controlPlane:
+          metricsCollection: Istio
+          name: data-science-smcp
+          namespace: istio-system
+        managementState: Removed
+      trustedCABundle:
+        customCABundle: ''
+        managementState: Managed
+  - apiVersion: datasciencecluster.opendatahub.io/v1
+    kind: DataScienceCluster
+    metadata:
+      name: default-dsc
+    spec:
+      components:
+        codeflare:
+          managementState: Managed
+        kserve:
+          managementState: Managed
+          defaultDeploymentMode: RawDeployment
+          rawDeploymentServiceConfig: Headed
+          nim:
+            managementState: Removed
+          serving:
+            ingressGateway:
+              certificate:
+                type: OpenshiftDefaultIngress
+            managementState: Removed
+            name: do-not-use
+        modelregistry:
+          managementState: Removed
+          registriesNamespace: rhoai-model-registries
+        trustyai:
+          managementState: Removed
+        ray:
+          managementState: Managed
+        kueue:
+          managementState: Removed
+        workbenches:
+          managementState: Managed
+        dashboard:
+          managementState: Managed
+        modelmeshserving:
+          managementState: Managed
+        datasciencepipelines:
+          managementState: Managed
+        trainingoperator:
+          managementState: Managed
+  - apiVersion: opendatahub.io/v1alpha
+    kind: OdhDashboardConfig
+    metadata:
+      name: odh-dashboard-config
+      namespace: ${RHOAI_NAMESPACE}
+    spec:
+      dashboardConfig:
+        enablement: true
+        disableTrustyBiasMetrics: true
+        disableDistributedWorkloads: false
+        disableProjects: false
+        disableSupport: false
+        disablePipelines: false
+        disableProjectSharing: false
+        disableModelServing: false
+        disableKServe: false
+        disableAcceleratorProfiles: false
+        disableNIMModelServing: true
+        disableCustomServingRuntimes: false
+        disableModelMesh: false
+        disableKServeAuth: false
+        disableISVBadges: false
+        disableInfo: false
+        disableClusterManager: false
+        disablePerformanceMetrics: false
+        disableBYONImageStream: false
+        disableModelRegistry: true
+        disableTracking: false
+      groupsConfig:
+        adminGroups: rhods-admins
+        allowedGroups: 'system:authenticated'
+      modelServerSizes:
+        - name: Small
+          resources:
+            limits:
+              cpu: '2'
+              memory: 3Gi
+            requests:
+              cpu: 500m
+              memory: 3Gi
+        - name: Medium
+          resources:
+            limits:
+              cpu: '4'
+              memory: 8Gi
+            requests:
+              cpu: '2'
+              memory: 8Gi
+      notebookController:
+        enabled: false
+        notebookNamespace: rhods-notebooks
+        pvcSize: 20Gi
+      notebookSizes:
+        - name: Small
+          resources:
+            limits:
+              cpu: '1'
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 2Gi
+        - name: Medium
+          resources:
+            limits:
+              cpu: '2'
+              memory: 8Gi
+            requests:
+              cpu: '1'
+              memory: 8Gi
+        - name: Large
+          resources:
+            limits:
+              cpu: '4'
+              memory: 16Gi
+            requests:
+              cpu: '2'
+              memory: 16Gi
+      templateDisablement: []
+      templateOrder: []
+parameters:
+  - name: RHOAI_NAMESPACE
+    value: redhat-ods-operator
