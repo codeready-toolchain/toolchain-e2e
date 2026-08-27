@@ -41,23 +41,10 @@ KSERVE_CA_NAME="odh-kserve-custom-ca-bundle"
 delete_configmaps() {
   local label="$1"
   local name="$2"
-  local print_count="${3:-false}"
-  local count=0
-
-  while IFS='/' read -r ns cm_name; do
-    [[ -z "${ns}" || -z "${cm_name}" ]] && continue
-    echo "Deleting ${ns}/${cm_name}"
-    output="$("${OC[@]}" delete configmap "${cm_name}" -n "${ns}" --ignore-not-found)"
-    if [[ -n "${output}" ]]; then
-      echo "${output}"
-      count=$((count + 1))
-    fi
-  done < <("${OC[@]}" get configmap --all-namespaces -l "${label}" --field-selector "metadata.name=${name}" \
-    -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}')
-
-  if [[ "${print_count}" == "true" ]]; then
-    echo "Deleted ${count} ${name} ConfigMap(s)."
-  fi
+  "${OC[@]}" delete configmap --all-namespaces \
+    -l "${label}" \
+    --field-selector "metadata.name=${name}" \
+    --ignore-not-found --wait=false
 }
 
 echo "Deleting ${CABUNDLE_NAME} ConfigMaps..."
