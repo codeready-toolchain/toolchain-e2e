@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<EOF
+Usage: $0 <kubeconfig>
+
+Delete ConfigMaps in this order:
+  1. name odh-trusted-ca-bundle with label config.openshift.io/inject-trusted-cabundle=true
+  2. name odh-kserve-custom-ca-bundle with label opendatahub.io/managed=true
+     (only after every odh-trusted-ca-bundle ConfigMap has been deleted)
+
+Arguments:
+  kubeconfig    Path to the kubeconfig file
+EOF
+  exit 1
+}
+
+if [[ $# -ne 1 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+  usage
+fi
+
+KUBECONFIG_PATH="$1"
+
+if [[ ! -f "${KUBECONFIG_PATH}" ]]; then
+  echo "error: kubeconfig not found: ${KUBECONFIG_PATH}" >&2
+  exit 1
+fi
+
+if ! command -v oc >/dev/null 2>&1; then
+  echo "error: oc is required but was not found in PATH" >&2
+  exit 1
+fi
+
+OC=(oc --kubeconfig="${KUBECONFIG_PATH}")
+CABUNDLE_LABEL="config.openshift.io/inject-trusted-cabundle=true"
+CABUNDLE_NAME="odh-trusted-ca-bundle"
+KSERVE_CA_LABEL="opendatahub.io/managed=true"
+KSERVE_CA_NAME="odh-kserve-custom-ca-bundle"
+
+delete_configmaps() {
+  local label="$1"
+  local name="$2"
+  local print_count="${3:-false}"
+  local count=0
+
+  while IFS='/' read -r ns cm_name; do
+    [[ -z "${ns}" || -z "${cm_name}" ]] && continue
+    echo "Deleting ${ns}/${cm_name}"
+    output="$("${OC[@]}" delete configmap "${cm_name}" -n "${ns}" --ignore-not-found)"
+    if [[ -n "${output}" ]]; then
+      echo "${output}"
+      count=$((count + 1))
+    fi
+  done < <("${OC[@]}" get configmap --all-namespaces -l "${label}" --field-selector "metadata.name=${name}" \
+    -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}')
+
+  if [[ "${print_count}" == "true" ]]; then
+    echo "Deleted ${count} ${name} ConfigMap(s)."
+  fi
+}
+
+echo "Deleting ${CABUNDLE_NAME} ConfigMaps..."
+delete_configmaps "${CABUNDLE_LABEL}" "${CABUNDLE_NAME}" true
+
+echo "Deleting ${KSERVE_CA_NAME} ConfigMaps..."
+delete_configmaps "${KSERVE_CA_LABEL}" "${KSERVE_CA_NAME}"

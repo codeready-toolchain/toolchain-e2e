@@ -3,6 +3,10 @@ kind: Template
 metadata:
   name: rhoai2_25_10-post-install
 objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${RHOAI_APPS_NAMESPACE}
   - kind: DSCInitialization
     apiVersion: dscinitialization.opendatahub.io/v1
     metadata:
@@ -67,7 +71,7 @@ objects:
     kind: OdhDashboardConfig
     metadata:
       name: odh-dashboard-config
-      namespace: redhat-ods-applications
+      namespace: ${RHOAI_APPS_NAMESPACE}
     spec:
       dashboardConfig:
         enablement: true
@@ -142,3 +146,6 @@ objects:
               memory: 16Gi
       templateDisablement: []
       templateOrder: []
+parameters:
+  - name: RHOAI_APPS_NAMESPACE
+    value: redhat-ods-applications

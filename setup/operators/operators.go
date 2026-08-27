@@ -46,7 +46,10 @@ var PostInstallTemplates = []string{
 	"rhoai2_25_10.yaml",
 }
 
-var csvTimeout = 10 * time.Second
+var (
+	csvTimeout              = 10 * time.Second
+	postInstallApplyTimeout = 5 * time.Minute
+)
 
 func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	subs := &v1alpha1.SubscriptionList{}
@@ -86,7 +89,7 @@ func ApplyPostInstallTemplates(ctx context.Context, cl client.Client, s *runtime
 			return err
 		}
 
-		if err := templates.ApplyObjects(ctx, cl, objsToProcess); err != nil {
+		if err := templates.ApplyObjectsWithRetryTimeout(ctx, cl, objsToProcess, postInstallApplyTimeout); err != nil {
 			return err
 		}
 
