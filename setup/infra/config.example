@@ -1,0 +1,39 @@
+# Per-developer configuration for openshift-install.
+# Copy this file to 'config' and customize:
+#
+#   cp config.example config
+#
+# 'config' is gitignored — it contains per-developer values.
+
+# Pick a unique name (lowercase, hyphens, max 27 chars for openshift-install)
+CLUSTER_NAME="CHANGEME-perf"
+
+# Route53 hosted zone in the target AWS account (run: aws route53 list-hosted-zones)
+BASE_DOMAIN="CHANGEME"
+
+# AWS region — must match the Route53 hosted zone
+AWS_REGION="us-east-1"
+
+# Single AZ — the installer defaults to all available zones, each requiring its own
+# Elastic IP. A single AZ avoids hitting the account's EIP quota.
+AWS_ZONE="us-east-1a"
+
+# Instance types — README recommends m5.8xlarge masters, m5.2xlarge workers
+MASTER_TYPE="m5.8xlarge"
+WORKER_TYPE="m5.2xlarge"
+WORKER_REPLICAS=3
+
+# Pull secret from https://console.redhat.com/openshift/install/pull-secret
+PULL_SECRET_FILE="$HOME/.openshift/pull-secret.json"
+
+# SSH public key for node access (optional but recommended for debugging)
+SSH_KEY_FILE="$HOME/.ssh/id_ed25519.pub"
+
+# OCP version (major.minor) — create-cluster.sh resolves the latest z-stream
+OCP_VERSION="4.21"
+
+# Optional: override the RHOAI operator image after OLM install.
+# When set, install-rhoai.sh patches the CSV to use this image instead of the
+# catalog default. Useful for testing operator fixes before they land in a release.
+# Example: RHODS_OPERATOR_IMAGE="quay.io/ugiordan/rhods-operator:rhoaieng-83243-test1"
+#RHODS_OPERATOR_IMAGE=""

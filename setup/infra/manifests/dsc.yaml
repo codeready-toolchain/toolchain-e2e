@@ -1,0 +1,46 @@
+apiVersion: datasciencecluster.opendatahub.io/v2
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+spec:
+  components:
+    dashboard:
+      managementState: Managed
+    aipipelines:
+      managementState: Managed
+    kserve:
+      managementState: Managed  # Required by MaaS
+      defaultDeploymentMode: RawDeployment
+      rawDeploymentServiceConfig: Headed
+      nim:
+        managementState: Removed
+      serving:
+        ingressGateway:
+          certificate:
+            type: OpenshiftDefaultIngress
+        managementState: Removed
+        name: do-not-use
+    kueue:
+      managementState: Removed  # Users are not running distributed training jobs
+    modelregistry:
+      managementState: Removed
+    ray:
+      managementState: Removed  # Since RHOAI 3.4, Ray has been removed from vLLM multi-node ServingRuntime + inference
+    trainingoperator:
+      managementState: Managed
+    trainer:
+      managementState: Removed  # Presently, there is no dedicated GPU for individual users, so trainer's TrainJob can't be used.
+    trustyai:
+      managementState: Removed
+    workbenches:
+      managementState: Managed
+    feastoperator:
+      managementState: Removed  # Feature Store is not required for GenAI or Chatting w/ MaaS models
+    llamastackoperator:
+      managementState: Removed  # Deprecated in favor of OGX
+    ogx:
+      managementState: Managed  # Required for RAG demos
+    mlflowoperator:
+      managementState: Managed
+    sparkoperator:
+      managementState: Removed  # Spark operator is Dev Preview + not required for Sandbox
