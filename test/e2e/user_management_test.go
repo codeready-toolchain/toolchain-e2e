@@ -271,7 +271,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
 		_, err = hostAwait.WaitForUserSignup(s.T(), userSignupMember1.Name,
-			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
+			wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(s.T(), err)
 
 		// The non-excluded user should be deactivated
@@ -523,7 +523,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignup, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated),
-			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
+			wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(s.T(), err)
 
 		// Set the unverified retention days to 0
@@ -547,7 +547,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutNotification())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated),
 			wait.UntilUserSignupHasNilScheduledDeactivationTime(),
-			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
+			wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(s.T(), err)
 
 		// Set the unverified retention days to 7

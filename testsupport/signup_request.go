@@ -56,6 +56,7 @@ type SignupRequest struct {
 	accountNumber        string
 	cleanupDisabled      bool
 	noSpace              bool
+	gatingOnly           bool
 	activationCode       string
 	space                *toolchainv1alpha1.Space
 	spaceTier            string
@@ -185,6 +186,12 @@ func (r *SignupRequest) NoSpace() *SignupRequest {
 	return r
 }
 
+// GatingOnly adds signup request parameter to go through gating steps only
+func (r *SignupRequest) GatingOnly() *SignupRequest {
+	r.gatingOnly = true
+	return r
+}
+
 // SpaceTier specifies the tier of the Space
 func (r *SignupRequest) SpaceTier(spaceTier string) *SignupRequest {
 	r.spaceTier = spaceTier
@@ -248,6 +255,9 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	if r.noSpace {
 		queryParams["no-space"] = "true"
 	}
+	if r.gatingOnly {
+		queryParams["gating-only"] = "true"
+	}
 
 	// Call the signup POST endpoint
 	invokeEndpoint(t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
@@ -268,7 +278,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 			// We set the VerificationRequired state first, because if manuallyApprove is also set then it will
 			// reset the VerificationRequired state to false.
 			if r.verificationRequired != states.VerificationRequired(instance) {
-				states.SetVerificationRequired(userSignup, r.verificationRequired)
+				states.SetVerificationRequired(instance, r.verificationRequired)
 			}
 
 			if r.manuallyApprove {

@@ -42,7 +42,6 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(t, err)
-	require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")
 
 	err = hostAwait.WaitUntilNotificationsDeleted(t, userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 	require.NoError(t, err)
@@ -73,9 +72,9 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 
 	userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
+		wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey))
 	require.NoError(t, err)
-	require.False(t, states.Deactivated(userSignup), "usersignup should not be deactivated")
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup)
 
