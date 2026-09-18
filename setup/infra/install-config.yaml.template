@@ -1,0 +1,39 @@
+apiVersion: v1
+baseDomain: ${BASE_DOMAIN}
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform:
+    aws:
+      type: "${MASTER_TYPE}"
+      zones:
+      - ${AWS_ZONE}
+  replicas: 3
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform:
+    aws:
+      type: "${WORKER_TYPE}"
+      zones:
+      - ${AWS_ZONE}
+  replicas: ${WORKER_REPLICAS}
+metadata:
+  name: ${CLUSTER_NAME}
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: ${AWS_REGION}
+publish: External
+pullSecret: '${PULL_SECRET}'
+sshKey: '${SSH_KEY}'
