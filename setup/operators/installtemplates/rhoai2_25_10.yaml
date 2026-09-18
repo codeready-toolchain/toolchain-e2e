@@ -1,0 +1,29 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-rhoai2_25_10-operator
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${RHOAI_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: rhods-operator
+      namespace: ${RHOAI_NAMESPACE}
+    spec: {}
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: rhods-operator
+      namespace: ${RHOAI_NAMESPACE}
+    spec:
+      channel: stable-2.25
+      installPlanApproval: Automatic
+      name: rhods-operator
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+parameters:
+  - name: RHOAI_NAMESPACE
+    value: redhat-ods-operator

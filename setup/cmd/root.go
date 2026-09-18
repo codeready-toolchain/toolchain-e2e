@@ -228,6 +228,19 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		if err := operators.EnsureOperatorsInstalled(cmd.Context(), cl, scheme, templatePaths); err != nil {
 			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
+
+		term.Infof("⏳ applying post-install templates...")
+		postInstallPaths := []string{}
+		for i := 0; i < operatorsLimit; i++ {
+			for _, postInstallTemplate := range operators.PostInstallTemplates {
+				if postInstallTemplate == operators.Templates[i] {
+					postInstallPaths = append(postInstallPaths, "setup/operators/post-install/"+postInstallTemplate)
+				}
+			}
+		}
+		if err := operators.ApplyPostInstallTemplates(cmd.Context(), cl, scheme, postInstallPaths); err != nil {
+			term.Fatalf(err, "failed to apply post-install templates")
+		}
 	}
 
 	// provision the users
