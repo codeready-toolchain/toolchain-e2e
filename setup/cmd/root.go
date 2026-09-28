@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/auth"
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/idlers"
@@ -140,6 +141,18 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		}
 	}
 
+	transformedUsername := usersignup.TransformUsername(usernamePrefix, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	if transformedUsername != usernamePrefix {
+		term.Fatalf(fmt.Errorf("username prefix '%s' would be transformed to '%s' by Dev Sandbox username restrictions: "+
+			"must contain only lowercase alphanumeric characters or '-', "+
+			"must not start or end with '-', "+
+			"must not start with 'openshift', 'kube', 'default', 'redhat', or 'sandbox', "+
+			"must not end with 'admin', "+
+			"must not exceed 20 characters, "+
+			"and must not be numeric-only",
+			usernamePrefix, transformedUsername), "invalid username value '%s'", usernamePrefix)
+	}
+
 	// add the default user-workloads.yaml file automatically
 	defaultTemplatePath := "setup/resources/user-workloads.yaml"
 
@@ -153,11 +166,11 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		token, err = auth.GetTokenFromOC()
 		if err != nil {
 			tokenRequestURI, err := auth.GetTokenRequestURI(cl)
-			errMsg := "a token is required to capture metrics, use oc login with token to log into the cluster. eg. `oc login --token=<token> --server=<server>`"
+			errMsg := "a token is required to capture metrics, use 'oc login' with token to log into the cluster. eg. `oc login --token=<token> --server=<server>`"
 			if err != nil {
-				term.Fatalf(err, errMsg)
+				term.Fatal(err, errMsg)
 			}
-			term.Fatalf(fmt.Errorf("a token can be requested from %s", tokenRequestURI), errMsg)
+			term.Fatal(fmt.Errorf("a token can be requested from %s", tokenRequestURI), errMsg)
 		}
 	}
 

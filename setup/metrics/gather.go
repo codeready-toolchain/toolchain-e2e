@@ -43,6 +43,9 @@ type aggregateResult struct {
 }
 
 func (r aggregateResult) avg() float64 {
+	if r.sampleCount == 0 {
+		return 0
+	}
 	return r.sum / float64(r.sampleCount)
 }
 
@@ -109,7 +112,8 @@ func (g *Gatherer) StartGathering() chan struct{} {
 					return metricsErr == nil, nil
 				})
 				if err != nil {
-					g.term.Fatalf(metricsErr, "metrics error")
+					g.term.Infof("⚠ Skipping metric %q: %s (will retry on next gathering interval)", q.Name(), metricsErr)
+					continue
 				}
 			}
 		}, g.queryInterval, stop)

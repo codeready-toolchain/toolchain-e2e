@@ -43,7 +43,7 @@ func GetTemplateFromContent(content []byte) (*templatev1.Template, error) {
 
 // ApplyObjects applies the given objects in order
 func ApplyObjects(ctx context.Context, cl runtimeclient.Client, objsToApply []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
-	applycl := applyclientlib.NewSSAApplyClient(cl, fieldManager)
+	applycl := applyclientlib.NewServerSideApplyClient(cl, fieldManager)
 	for _, obj := range objsToApply {
 		fmt.Printf("Applying %s object with name '%s' in namespace '%s'\n", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), obj.GetNamespace())
 		if err := applyObject(ctx, applycl, obj, modifiers...); err != nil {
@@ -111,7 +111,7 @@ func combineResults(results ...<-chan error) <-chan error {
 func startObjectProcessor(ctx context.Context, cl runtimeclient.Client, objSource <-chan runtimeclient.Object, modifiers ...ClientObjectModifier) <-chan error {
 	out := make(chan error)
 	go func() {
-		applycl := applyclientlib.NewSSAApplyClient(cl, fieldManager)
+		applycl := applyclientlib.NewServerSideApplyClient(cl, fieldManager)
 		for obj := range objSource {
 			out <- applyObject(ctx, applycl, obj, modifiers...)
 			time.Sleep(100 * time.Millisecond)
@@ -131,7 +131,7 @@ func NamespaceModifier(userNS string) ClientObjectModifier {
 	}
 }
 
-func applyObject(ctx context.Context, applycl *applyclientlib.SSAApplyClient, obj runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+func applyObject(ctx context.Context, applycl *applyclientlib.ServerSideApplyClient, obj runtimeclient.Object, modifiers ...ClientObjectModifier) error {
 	// apply any modifiers before applying the object
 	for _, modifier := range modifiers {
 		if err := modifier(obj); err != nil {
