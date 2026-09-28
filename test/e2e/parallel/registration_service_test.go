@@ -172,6 +172,36 @@ func TestAnalytics(t *testing.T) {
 		// Call sandbox segment write key endpoint.
 		assertNotSecuredGetResponseEquals(t, "analytics/segment-write-key", "test sandbox segment write key")
 	})
+
+	t.Run("get workato webhook url 200 OK", func(t *testing.T) {
+		// Create a token that will be used to invoke the secured endpoint.
+		identity := commonauth.NewIdentity()
+		emailValue := identity.Username + "@some.domain"
+		emailClaim := commonauth.WithEmailClaim(emailValue)
+		token, err := commonauth.GenerateSignedE2ETestToken(*identity, emailClaim)
+		require.NoError(t, err)
+
+		// Call workato webhook url endpoint with a valid token.
+		response := NewHTTPRequest(t).
+			InvokeEndpoint("GET", route+"/api/v1/analytics/workato-webhook-url", token, "", http.StatusOK).
+			UnmarshalMap()
+
+		workatoWebhookUrl, ok := response["workatoWebhookUrl"].(string)
+		require.True(t, ok, "workatoWebhookUrl field should be present in response")
+		assert.Equal(t, "https://webhooks.testwebhook", workatoWebhookUrl)
+	})
+
+	t.Run("get workato webhook url 401 Unauthorized without token", func(t *testing.T) {
+		// Call workato webhook url endpoint without a token - should fail since it's a secured endpoint.
+		req, err := http.NewRequest("GET", route+"/api/v1/analytics/workato-webhook-url", nil)
+		require.NoError(t, err)
+
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
+		require.NoError(t, err)
+		defer Close(t, resp)
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
 }
 
 func TestAuthConfig(t *testing.T) {
@@ -966,6 +996,35 @@ func TestUsernames(t *testing.T) {
 					InvokeEndpoint("GET", route+"/api/v1/usernames/"+tc.searchQuery, token, "", http.StatusNotFound)
 			})
 		}
+	})
+}
+
+func TestDisabledIntegrations(t *testing.T) {
+	// given
+	t.Parallel()
+	await := WaitForDeployments(t)
+	route := await.Host().RegistrationServiceURL
+
+	t.Run("get disabled integrations 200 OK without token", func(t *testing.T) {
+		// Call disabled-integrations endpoint without a token - should succeed since it's an unsecured endpoint.
+		req, err := http.NewRequest("GET", route+"/api/v1/disabled-integrations", nil)
+		require.NoError(t, err)
+
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
+		require.NoError(t, err)
+		defer Close(t, resp)
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NotNil(t, body)
+
+		// Verify the response is a valid JSON array.
+		var disabledIntegrations []string
+		err = json.Unmarshal(body, &disabledIntegrations)
+		require.NoError(t, err, "response body should be a valid JSON array, got: %s", string(body))
+		require.NotNil(t, disabledIntegrations, "disabledIntegrations should not be nil")
 	})
 }
 
