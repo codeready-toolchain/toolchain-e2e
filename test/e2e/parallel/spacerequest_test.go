@@ -2,11 +2,13 @@ package parallel
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
@@ -34,6 +36,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		// when
 		targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
 		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+			WithName("my-space"),
 			WithSpecTierName("appstudio-env"),
 			WithSpecTargetClusterRoles(targetClusterRoles),
 			WithSpecDisableInheritance(false))
@@ -280,6 +283,70 @@ func TestCreateSpaceRequest(t *testing.T) {
 			wait.UntilSpaceRequestHasNamespaceAccessWithoutSecretRef(), // check that namespace access is present but without a SecretRef set
 		)
 		require.NoError(t, err)
+	})
+
+	t.Run("create multiple space requests with the similar name", func(t *testing.T) {
+		// when
+		// same user and parent space are for all space requests to come
+		user := testsupport.NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			TargetCluster(memberAwait).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
+		parentSpace := user.Space
+
+		// create first space request
+		spaceRequest1 := NewSpaceRequest(t,
+			WithName("foobarbaz"),
+			WithSpecTierName("base1ns"),
+			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+		)
+		require.NotEmpty(t, spaceRequest1)
+		err = memberAwait.CreateWithCleanup(t, spaceRequest1)
+		require.NoError(t, err)
+		subSpace1, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest1.Name, spaceRequest1.Namespace, parentSpace.GetName(),
+			wait.UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		require.Len(t, subSpace1.Status.ProvisionedNamespaces, 1)
+		t.Logf("subSpace1: %s -> %s", subSpace1.Name, subSpace1.Status.ProvisionedNamespaces[0].Name)
+		assert.True(t, strings.HasSuffix(subSpace1.Status.ProvisionedNamespaces[0].Name, spaceRequest1.Name[:8]+"-dev"))
+
+		// create second space request with the same first 8 characters to check the collision avoidance mechanism
+		spaceRequest2 := NewSpaceRequest(t,
+			WithName("foobarbazz"),
+			WithSpecTierName("base1ns"),
+			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+		)
+		require.NotEmpty(t, spaceRequest2)
+		err = memberAwait.CreateWithCleanup(t, spaceRequest2)
+		require.NoError(t, err)
+		subSpace2, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest2.Name, spaceRequest2.Namespace, parentSpace.GetName(),
+			wait.UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		require.Len(t, subSpace2.Status.ProvisionedNamespaces, 1)
+		t.Logf("subSpace2: %s -> %s", subSpace2.Name, subSpace2.Status.ProvisionedNamespaces[0].Name)
+		assert.True(t, strings.HasSuffix(subSpace2.Status.ProvisionedNamespaces[0].Name, spaceRequest2.Name[:7]+"1-dev")) // 7 first characters + "1" to avoid the collision
+
+		// create third space request with a name shorter than 8 characters
+		spaceRequest3 := NewSpaceRequest(t,
+			WithName("cookies"),
+			WithSpecTierName("base1ns"),
+			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+		)
+		require.NotEmpty(t, spaceRequest3)
+		err = memberAwait.CreateWithCleanup(t, spaceRequest3)
+		require.NoError(t, err)
+		subSpace3, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest3.Name, spaceRequest3.Namespace, parentSpace.GetName(),
+			wait.UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		require.Len(t, subSpace3.Status.ProvisionedNamespaces, 1)
+		t.Logf("subSpace3: %s -> %s", subSpace3.Name, subSpace3.Status.ProvisionedNamespaces[0].Name)
+		assert.True(t, strings.HasSuffix(subSpace3.Status.ProvisionedNamespaces[0].Name, spaceRequest3.Name+"-dev"))
 	})
 }
 

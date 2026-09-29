@@ -8,6 +8,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,11 +93,18 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 		// create a kube client by ready the secret created in the spacerequest namespace
 		namespaceAccessClient, adminSecret := util.NewKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
 
+		// check the namespace name
+		if len(spaceRequest.Name) > 8 {
+			assert.Contains(t, nsAccess.Name, spaceRequest.Name[:8])
+		} else {
+			assert.Contains(t, nsAccess.Name, spaceRequest.Name)
+		}
+
 		// check expected labels on the secret
 		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey])
-		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
+		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
 		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey])
-		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
+		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
 
 		// validate the kube client has access to the namespace name that's in the spacerequest.Status.Namepsacess[n].Name field
 		util.ValidateKubeClient(t, namespaceAccessClient, nsAccess.Name, &corev1.SecretList{})
