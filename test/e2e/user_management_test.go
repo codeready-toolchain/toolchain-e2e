@@ -683,7 +683,7 @@ func (s *userManagementTestSuite) verifyRegServiceForBannedUser(method, token st
 	statusErr := make(map[string]interface{})
 	err = json.Unmarshal(body, &statusErr)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), "forbidden: Access to the Developer Sandbox has been suspended due to suspicious activity or detected abuse.", statusErr["message"])
+	require.Equal(s.T(), "forbidden: Access has been suspended due to suspicious activity or detected abuse.", statusErr["message"])
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
