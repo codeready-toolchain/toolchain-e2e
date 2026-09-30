@@ -1148,14 +1148,16 @@ func TestUIConfig(t *testing.T) {
 
 	t.Run("get uiconfig 200 response", func(t *testing.T) {
 		// when
-		// Authenticated UI configuration returns only values that require authentication.
+		// Authenticated UI configuration returns the webhook and, for the current dashboard, disabledIntegrations.
+		// disabledIntegrations is unset in the e2e ToolchainConfig, so that list is empty.
 		response := NewHTTPRequest(t).
 			InvokeEndpoint("GET", route+"/api/v1/uiconfig", token, "", http.StatusOK).UnmarshalMap()
 
 		// then
 		// verify that the expected config is returned
 		assert.Equal(t, map[string]interface{}{
-			"workatoWebHookURL": "https://webhooks.testwebhook",
+			"workatoWebHookURL":    "https://webhooks.testwebhook",
+			"disabledIntegrations": []interface{}{},
 		}, response)
 	})
 
