@@ -374,6 +374,14 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		})
 
 		t.Run("metric incremented when user reactivated", func(t *testing.T) {
+			// given
+			// set verified to be expired
+			_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+				Update(identity0.Username, hostAwait.Namespace, func(us *toolchainv1alpha1.UserSignup) {
+					us.Annotations[toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey] = time.Now().Add(-10 * 24 * time.Hour).Format(time.RFC3339)
+				})
+			require.NoError(t, err)
+
 			// when reactivating the user
 			NewHTTPRequest(t).InvokeEndpoint("POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
 			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,

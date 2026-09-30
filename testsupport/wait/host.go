@@ -544,9 +544,12 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
-func UntilUserSignupHasStates(states ...toolchainv1alpha1.UserSignupState) UserSignupWaitCriterion {
+func UntilUserSignupMatchesStates(states ...toolchainv1alpha1.UserSignupState) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			if len(states) != len(actual.Spec.States) {
+				return false
+			}
 			for _, requiredState := range states {
 				found := false
 				for _, s := range actual.Spec.States {
@@ -562,7 +565,7 @@ func UntilUserSignupHasStates(states ...toolchainv1alpha1.UserSignupState) UserS
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return fmt.Sprintf("expected UserSignup '%s' to contain states '%s', actual states: '%s'", actual.Name,
+			return fmt.Sprintf("expected UserSignup '%s' to match states '%s', actual states: '%s'", actual.Name,
 				states, actual.Spec.States)
 		},
 	}

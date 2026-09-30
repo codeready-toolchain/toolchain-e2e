@@ -103,6 +103,7 @@ func TestProxyPublicViewer(t *testing.T) {
 				user := createAppStudioRandomUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
 					return sr.
 						NoSpace().
+						VerificationRequired().
 						RequireConditions(
 							wait.ConditionSet(wait.Default(), wait.VerificationRequired())...)
 				})
