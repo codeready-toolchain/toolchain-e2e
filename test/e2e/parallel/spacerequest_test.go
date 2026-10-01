@@ -314,39 +314,53 @@ func TestCreateSpaceRequest(t *testing.T) {
 		assert.Equal(t, expSubSpaceName, subSpace1.Name)
 		assert.Equal(t, expSubSpaceName+"-dev", subSpace1.Status.ProvisionedNamespaces[0].Name)
 
-		// create second space request with the same first 8 characters to check the collision avoidance mechanism
-		spaceRequest2 := NewSpaceRequest(t,
-			WithName("foobarbazz"),
-			WithSpecTierName("base1ns"),
-			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
-		)
-		require.NotEmpty(t, spaceRequest2)
-		err = memberAwait.CreateWithCleanup(t, spaceRequest2)
-		require.NoError(t, err)
-		subSpace2, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest2.Name, spaceRequest2.Namespace, parentSpace.GetName(),
-			wait.UntilSpaceHasAnyProvisionedNamespaces(),
-		)
-		require.NoError(t, err)
-		require.Len(t, subSpace2.Status.ProvisionedNamespaces, 1)
-		t.Logf("subSpace2: %s -> %s", subSpace2.Name, subSpace2.Status.ProvisionedNamespaces[0].Name)
-		assert.True(t, strings.HasSuffix(subSpace2.Status.ProvisionedNamespaces[0].Name, spaceRequest2.Name[:7]+"1-dev")) // 7 first characters + "1" to avoid the collision
+		t.Run("create second space request with the same name", func(t *testing.T) {
+			// given
+			// create second space request with the same first 8 characters to check the collision avoidance mechanism
+			spaceRequest2 := NewSpaceRequest(t,
+				WithName("foobarbazz"),
+				WithSpecTierName("base1ns"),
+				WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+			)
+			require.NotEmpty(t, spaceRequest2)
 
-		// create third space request with a name shorter than 8 characters
-		spaceRequest3 := NewSpaceRequest(t,
-			WithName("cookies"),
-			WithSpecTierName("base1ns"),
-			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
-		)
-		require.NotEmpty(t, spaceRequest3)
-		err = memberAwait.CreateWithCleanup(t, spaceRequest3)
-		require.NoError(t, err)
-		subSpace3, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest3.Name, spaceRequest3.Namespace, parentSpace.GetName(),
-			wait.UntilSpaceHasAnyProvisionedNamespaces(),
-		)
-		require.NoError(t, err)
-		require.Len(t, subSpace3.Status.ProvisionedNamespaces, 1)
-		t.Logf("subSpace3: %s -> %s", subSpace3.Name, subSpace3.Status.ProvisionedNamespaces[0].Name)
-		assert.True(t, strings.HasSuffix(subSpace3.Status.ProvisionedNamespaces[0].Name, spaceRequest3.Name+"-dev"))
+			// when
+			err = memberAwait.CreateWithCleanup(t, spaceRequest2)
+
+			// then
+			require.NoError(t, err)
+			subSpace2, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest2.Name, spaceRequest2.Namespace, parentSpace.GetName(),
+				wait.UntilSpaceHasAnyProvisionedNamespaces(),
+			)
+			require.NoError(t, err)
+			require.Len(t, subSpace2.Status.ProvisionedNamespaces, 1)
+			t.Logf("subSpace2: %s -> %s", subSpace2.Name, subSpace2.Status.ProvisionedNamespaces[0].Name)
+			assert.True(t, strings.HasSuffix(subSpace2.Status.ProvisionedNamespaces[0].Name, spaceRequest2.Name[:7]+"1-dev")) // 7 first characters + "1" to avoid the collision
+
+			t.Run("create third space request with a name shorter than 8 characters", func(t *testing.T) {
+				// given
+				// create third space request with a name shorter than 8 characters
+				spaceRequest3 := NewSpaceRequest(t,
+					WithName("cookies"),
+					WithSpecTierName("base1ns"),
+					WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+				)
+				require.NotEmpty(t, spaceRequest3)
+
+				// when
+				err = memberAwait.CreateWithCleanup(t, spaceRequest3)
+
+				// then
+				require.NoError(t, err)
+				subSpace3, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest3.Name, spaceRequest3.Namespace, parentSpace.GetName(),
+					wait.UntilSpaceHasAnyProvisionedNamespaces(),
+				)
+				require.NoError(t, err)
+				require.Len(t, subSpace3.Status.ProvisionedNamespaces, 1)
+				t.Logf("subSpace3: %s -> %s", subSpace3.Name, subSpace3.Status.ProvisionedNamespaces[0].Name)
+				assert.True(t, strings.HasSuffix(subSpace3.Status.ProvisionedNamespaces[0].Name, spaceRequest3.Name+"-dev"))
+			})
+		})
 	})
 }
 
