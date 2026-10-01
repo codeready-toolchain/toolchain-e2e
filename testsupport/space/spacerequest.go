@@ -1,6 +1,7 @@
 package space
 
 import (
+	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -93,9 +94,12 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 		// create a kube client by ready the secret created in the spacerequest namespace
 		namespaceAccessClient, adminSecret := util.NewKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
 
-		// check the namespace name
+		// check the namespace name contains the expected prefix:
+		// - normal: first 8 characters of the request name
+		// - collision-adjusted: first 7 characters (the 8th is replaced by a collision digit)
 		if len(spaceRequest.Name) > 8 {
-			assert.Contains(t, nsAccess.Name, spaceRequest.Name[:8])
+			assert.True(t, strings.Contains(nsAccess.Name, spaceRequest.Name[:8]) || strings.Contains(nsAccess.Name, spaceRequest.Name[:7]),
+				"expected namespace %q to contain %q (normal) or %q (collision-adjusted)", nsAccess.Name, spaceRequest.Name[:8], spaceRequest.Name[:7])
 		} else {
 			assert.Contains(t, nsAccess.Name, spaceRequest.Name)
 		}
