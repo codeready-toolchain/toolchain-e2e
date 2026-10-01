@@ -57,6 +57,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
+		VerifyNamespaceName(t, spaceRequest)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 		t.Run("subSpace is recreated if deleted", func(t *testing.T) {
@@ -399,6 +400,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 	)
 	require.NoError(t, err)
+	VerifyNamespaceName(t, spaceRequest)
 	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 	t.Run("update space request tierName", func(t *testing.T) {

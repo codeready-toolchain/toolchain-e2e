@@ -94,6 +94,19 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 		// create a kube client by ready the secret created in the spacerequest namespace
 		namespaceAccessClient, adminSecret := util.NewKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
 
+		// check expected labels on the secret
+		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey])
+		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
+		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey])
+		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
+
+		// validate the kube client has access to the namespace name that's in the spacerequest.Status.Namepsacess[n].Name field
+		util.ValidateKubeClient(t, namespaceAccessClient, nsAccess.Name, &corev1.SecretList{})
+	}
+}
+
+func VerifyNamespaceName(t *testing.T, spaceRequest *toolchainv1alpha1.SpaceRequest) {
+	for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
 		// check the namespace name contains the expected prefix:
 		// - normal: first 8 characters of the request name
 		// - collision-adjusted: first 7 characters (the 8th is replaced by a collision digit)
@@ -103,14 +116,5 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 		} else {
 			assert.Contains(t, nsAccess.Name, spaceRequest.Name)
 		}
-
-		// check expected labels on the secret
-		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey])
-		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
-		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey])
-		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
-
-		// validate the kube client has access to the namespace name that's in the spacerequest.Status.Namepsacess[n].Name field
-		util.ValidateKubeClient(t, namespaceAccessClient, nsAccess.Name, &corev1.SecretList{})
 	}
 }
