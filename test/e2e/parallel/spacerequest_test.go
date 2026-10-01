@@ -8,7 +8,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
@@ -288,7 +287,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	t.Run("create multiple space requests with the similar name", func(t *testing.T) {
 		// when
 		// same user and parent space are for all space requests to come
-		user := testsupport.NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			ManuallyApprove().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			TargetCluster(memberAwait).
