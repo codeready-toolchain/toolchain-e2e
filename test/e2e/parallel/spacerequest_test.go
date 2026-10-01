@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -335,7 +336,9 @@ func TestCreateSpaceRequest(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, subSpace2.Status.ProvisionedNamespaces, 1)
 			t.Logf("subSpace2: %s -> %s", subSpace2.Name, subSpace2.Status.ProvisionedNamespaces[0].Name)
-			assert.True(t, strings.HasSuffix(subSpace2.Status.ProvisionedNamespaces[0].Name, spaceRequest2.Name[:7]+"1-dev")) // 7 first characters + "1" to avoid the collision
+			expSubSpaceName := fmt.Sprintf("%s-%s1", parentSpace, spaceRequest1.Name[:7]) // 7 first characters + "1" to avoid the collision
+			assert.Equal(t, expSubSpaceName, subSpace1.Name)
+			assert.Equal(t, expSubSpaceName+"-dev", subSpace1.Status.ProvisionedNamespaces[0].Name)
 
 			t.Run("create third space request with a name shorter than 8 characters", func(t *testing.T) {
 				// given
