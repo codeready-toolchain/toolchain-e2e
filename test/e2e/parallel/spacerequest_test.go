@@ -310,7 +310,9 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, subSpace1.Status.ProvisionedNamespaces, 1)
 		t.Logf("subSpace1: %s -> %s", subSpace1.Name, subSpace1.Status.ProvisionedNamespaces[0].Name)
-		assert.True(t, strings.HasSuffix(subSpace1.Status.ProvisionedNamespaces[0].Name, spaceRequest1.Name[:8]+"-dev"))
+		expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace, spaceRequest1.Name[:8])
+		assert.Equal(t, expSubSpaceName, subSpace1.Name)
+		assert.Equal(t, expSubSpaceName+"-dev", subSpace1.Status.ProvisionedNamespaces[0].Name)
 
 		// create second space request with the same first 8 characters to check the collision avoidance mechanism
 		spaceRequest2 := NewSpaceRequest(t,
