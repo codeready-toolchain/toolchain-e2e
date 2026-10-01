@@ -311,7 +311,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, subSpace1.Status.ProvisionedNamespaces, 1)
 		t.Logf("subSpace1: %s -> %s", subSpace1.Name, subSpace1.Status.ProvisionedNamespaces[0].Name)
-		expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace, spaceRequest1.Name[:8])
+		expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace.Name, spaceRequest1.Name[:8])
 		assert.Equal(t, expSubSpaceName, subSpace1.Name)
 		assert.Equal(t, expSubSpaceName+"-dev", subSpace1.Status.ProvisionedNamespaces[0].Name)
 
@@ -336,7 +336,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, subSpace2.Status.ProvisionedNamespaces, 1)
 			t.Logf("subSpace2: %s -> %s", subSpace2.Name, subSpace2.Status.ProvisionedNamespaces[0].Name)
-			expSubSpaceName := fmt.Sprintf("%s-%s1", parentSpace, spaceRequest1.Name[:7]) // 7 first characters + "1" to avoid the collision
+			expSubSpaceName := fmt.Sprintf("%s-%s1", parentSpace.Name, spaceRequest1.Name[:7]) // 7 first characters + "1" to avoid the collision
 			assert.Equal(t, expSubSpaceName, subSpace1.Name)
 			assert.Equal(t, expSubSpaceName+"-dev", subSpace1.Status.ProvisionedNamespaces[0].Name)
 

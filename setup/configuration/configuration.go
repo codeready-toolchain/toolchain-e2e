@@ -164,7 +164,7 @@ func getKubeconfigFile(kubeconfigPath string) (*os.File, error) {
 	} else {
 		path = filepath.Join(homeDir(), ".kube", "config")
 	}
-	return os.Open(filepath.Clean(path))
+	return os.Open(filepath.Clean(path)) //nolint:gosec
 }
 
 func newKubeConfig(r io.Reader) (clientcmd.ClientConfig, error) {
