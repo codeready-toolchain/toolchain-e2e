@@ -1147,24 +1147,69 @@ func TestUIConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("get uiconfig 200 response", func(t *testing.T) {
-		// given
-		// we have a user in the system
-
 		// when
-		// we call the get uiconfig endpoint to get ui configuration
+		// Authenticated UI configuration returns the webhook and, for the current dashboard, disabledIntegrations.
+		// disabledIntegrations is unset in the e2e ToolchainConfig, so that list is empty.
 		response := NewHTTPRequest(t).
 			InvokeEndpoint("GET", route+"/api/v1/uiconfig", token, "", http.StatusOK).UnmarshalMap()
 
 		// then
-		// verify that the expected URL is there
-		workatoWebHookURL, ok := response["workatoWebHookURL"].(string)
-		require.True(t, ok)
-		assert.Equal(t, "https://webhooks.testwebhook", workatoWebHookURL)
+		// verify that the expected config is returned
+		assert.Equal(t, map[string]interface{}{
+			"workatoWebHookURL":    "https://webhooks.testwebhook",
+			"disabledIntegrations": []interface{}{},
+		}, response)
+	})
 
-		// verify that disabledIntegrations is present and is an array
-		disabledIntegrations, ok := response["disabledIntegrations"]
-		require.True(t, ok, "disabledIntegrations field should be present in uiconfig response")
-		require.IsType(t, []interface{}{}, disabledIntegrations, "disabledIntegrations should be an array")
+	t.Run("get uiconfig 401 Unauthorized without token", func(t *testing.T) {
+		// when
+		req, err := http.NewRequest("GET", route+"/api/v1/uiconfig", nil)
+		require.NoError(t, err)
+
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
+
+		// then
+		require.NoError(t, err)
+		defer Close(t, resp)
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("get uiconfig/public 200 OK without token", func(t *testing.T) {
+		// when
+		// disabledIntegrations is unset in the e2e ToolchainConfig, so the public response is an empty list.
+		req, err := http.NewRequest("GET", route+"/api/v1/uiconfig/public", nil)
+		require.NoError(t, err)
+
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
+
+		// then
+		require.NoError(t, err)
+		defer Close(t, resp)
+
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var response map[string]interface{}
+		err = json.Unmarshal(body, &response)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"disabledIntegrations": []interface{}{},
+		}, response)
+	})
+
+	t.Run("get uiconfig/public with a token returns public fields only", func(t *testing.T) {
+		// when
+		response := NewHTTPRequest(t).
+			InvokeEndpoint("GET", route+"/api/v1/uiconfig/public", token, "", http.StatusOK).UnmarshalMap()
+
+		// then
+		// disabledIntegrations is unset in the e2e ToolchainConfig, so the public response is an empty list.
+		assert.Equal(t, map[string]interface{}{
+			"disabledIntegrations": []interface{}{},
+		}, response)
 	})
 }
 
