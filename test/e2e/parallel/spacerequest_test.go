@@ -324,7 +324,6 @@ func TestCreateSpaceRequest(t *testing.T) {
 				WithSpecTierName("base1ns"),
 				WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
 			)
-			require.NotEmpty(t, spaceRequest2)
 
 			// when
 			err = memberAwait.CreateWithCleanup(t, spaceRequest2)
