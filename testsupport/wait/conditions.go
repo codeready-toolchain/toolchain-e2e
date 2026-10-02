@@ -60,6 +60,22 @@ func Provisioned() toolchainv1alpha1.Condition {
 	}
 }
 
+// NoProvisioningConditions returns a set of conditions to be present when UserSignup
+// is in no-provisioning state
+func NoProvisioningConditions() []toolchainv1alpha1.Condition {
+	return append(Default(),
+		toolchainv1alpha1.Condition{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupInNoProvisioningStateReason,
+		},
+		toolchainv1alpha1.Condition{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupInNoProvisioningStateReason,
+		})
+}
+
 func PendingApproval() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{

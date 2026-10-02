@@ -34,7 +34,8 @@ sandbox_master_user_record_current 7
 sandbox_user_signups_auto_deactivated_total 0
 # HELP sandbox_user_signups_banned_total Total number of Banned User Signups
 # TYPE sandbox_user_signups_banned_total counter
-sandbox_user_signups_banned_total 0
+sandbox_user_signups_banned_total{no_provisioning="false"} 0
+sandbox_user_signups_banned_total{no_provisioning="true"} 0
 # HELP sandbox_user_signups_deactivated_total Total number of Deactivated User Signups
 # TYPE sandbox_user_signups_deactivated_total counter
 sandbox_user_signups_deactivated_total 0
@@ -43,7 +44,8 @@ sandbox_user_signups_deactivated_total 0
 sandbox_user_signups_approved_total 7
 # HELP sandbox_user_signups_total Total number of unique User Signups
 # TYPE sandbox_user_signups_total counter
-sandbox_user_signups_total 7
+sandbox_user_signups_total{no_provisioning="false"} 7
+sandbox_user_signups_total{no_provisioning="true"} 1
 `
 
 func TestGetMetricValue(t *testing.T) {
@@ -62,12 +64,20 @@ func TestGetMetricValue(t *testing.T) {
 	}
 
 	t.Run("valid metrics", func(t *testing.T) {
-		t.Run("counter with no labels", func(t *testing.T) {
+		t.Run("counter with no_provisioning label", func(t *testing.T) {
 			// when
-			result, err := GetMetricValue(config, ts.URL, "sandbox_user_signups_total", []string{})
+			result, err := GetMetricValue(config, ts.URL, "sandbox_user_signups_total", []string{"no_provisioning", "false"})
 			// then
 			require.NoError(t, err)
 			assert.InDelta(t, float64(7), result, 0.1)
+		})
+
+		t.Run("counter with no_provisioning true", func(t *testing.T) {
+			// when
+			result, err := GetMetricValue(config, ts.URL, "sandbox_user_signups_total", []string{"no_provisioning", "true"})
+			// then
+			require.NoError(t, err)
+			assert.InDelta(t, float64(1), result, 0.1)
 		})
 
 		t.Run("counter with single label", func(t *testing.T) {
@@ -111,6 +121,15 @@ func TestGetMetricValue(t *testing.T) {
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "metric 'workqueue_depth{[name non-existent-controller]}' not found")
+			assert.InDelta(t, float64(0), result, 0.01)
+		})
+
+		t.Run("unlabeled lookup fails when family has multiple series", func(t *testing.T) {
+			// when
+			result, err := GetMetricValue(config, ts.URL, "sandbox_user_signups_total", []string{})
+			// then
+			require.Error(t, err)
+			require.EqualError(t, err, "metric 'sandbox_user_signups_total{[]}' not found")
 			assert.InDelta(t, float64(0), result, 0.01)
 		})
 

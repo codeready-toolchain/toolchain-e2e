@@ -107,6 +107,11 @@ const (
 	UserSignupsBannedMetric              = "sandbox_user_signups_banned_total"
 	UserSignupVerificationRequiredMetric = "sandbox_user_signups_verification_required_total"
 
+	UserSignupsDeletedWithInitiatingVerificationMetric    = "sandbox_user_signups_deleted_with_initiating_verification_total"
+	UserSignupsDeletedWithoutInitiatingVerificationMetric = "sandbox_user_signups_deleted_without_initiating_verification_total"
+
+	NoProvisioningLabel = "no_provisioning"
+
 	MasterUserRecordsPerDomainMetric = "sandbox_master_user_records"
 
 	SpacesMetric = "sandbox_spaces_current"
@@ -121,6 +126,12 @@ const (
 	RegistrationServiceShortCommitMetric = "sandbox_registration_service_short_commit"
 
 	SignupProvisionTimeMetric = "sandbox_user_signup_provision_time"
+)
+
+// NoProvisioningFalse / NoProvisioningTrue are Prometheus label pairs for CounterVecs that split Sandbox vs gating-only.
+var (
+	NoProvisioningFalse = []string{NoProvisioningLabel, "false"}
+	NoProvisioningTrue  = []string{NoProvisioningLabel, "true"}
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
@@ -138,12 +149,10 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 	a.WaitForMetricsService(t)
 	// Capture baseline values
 	a.baselineValues = make(map[string]float64)
-	a.baselineValues[UserSignupsMetric] = a.GetMetricValue(t, UserSignupsMetric)
+	a.snapshotNoProvisioningMetrics(t)
 	a.baselineValues[UserSignupsApprovedMetric] = a.GetMetricValue(t, UserSignupsApprovedMetric)
 	a.baselineValues[UserSignupsDeactivatedMetric] = a.GetMetricValue(t, UserSignupsDeactivatedMetric)
 	a.baselineValues[UserSignupsAutoDeactivatedMetric] = a.GetMetricValue(t, UserSignupsAutoDeactivatedMetric)
-	a.baselineValues[UserSignupsBannedMetric] = a.GetMetricValue(t, UserSignupsBannedMetric)
-	a.baselineValues[UserSignupVerificationRequiredMetric] = a.GetMetricValue(t, UserSignupVerificationRequiredMetric)
 	a.baselineValues[HostOperatorVersionMetric] = a.GetMetricValue(t, HostOperatorVersionMetric)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
 		spacesKey := a.baselineKey(t, SpacesMetric, "cluster_name", name)
@@ -171,6 +180,22 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 	a.baselineHistogramValues = map[string]map[float64]uint64{}
 	a.baselineHistogramValues[SignupProvisionTimeMetric] = a.GetHistogramValues(t, SignupProvisionTimeMetric)
 	t.Logf("captured histogram baselines:\n%s", spew.Sdump(a.baselineHistogramValues))
+}
+
+func (a *HostAwaitility) snapshotNoProvisioningMetrics(t *testing.T) {
+	families := []string{
+		UserSignupsMetric,
+		UserSignupsBannedMetric,
+		UserSignupVerificationRequiredMetric,
+		UserSignupsDeletedWithInitiatingVerificationMetric,
+		UserSignupsDeletedWithoutInitiatingVerificationMetric,
+	}
+	for _, family := range families {
+		for _, labels := range [][]string{NoProvisioningFalse, NoProvisioningTrue} {
+			key := a.baselineKey(t, family, labels...)
+			a.baselineValues[key] = a.GetMetricValueOrZero(t, family, labels...)
+		}
+	}
 }
 
 // WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions

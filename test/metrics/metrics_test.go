@@ -175,11 +175,19 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
+	NewSignupRequest(awaitilities).
+		Username("gating-metrics-user").
+		Email("gating-metrics@redhat.com").
+		GatingOnly().
+		RequireConditions(wait.NoProvisioningConditions()...).
+		Execute(t)
+
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3)                                                            // all signups
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3, wait.NoProvisioningFalse...)                               // sandbox signups
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningTrue...)                                // gating-only signup
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // two activated
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // one incremented
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 3)                                                    // all activated
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 3)                                                    // sandbox users activated; gating-only is not approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")                   // not automatically approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 3, "method", "manual")                      // all manually approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
@@ -204,7 +212,8 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	}
 
 	// then verify the value of the `sandbox_users_per_activations` metric
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3)                                                            // all signups (even if deactivated)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3, wait.NoProvisioningFalse...)                               // all sandbox signups (even if deactivated)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningTrue...)                                // gating-only signup unchanged
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // two deactivated (but this metric is never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // one incremented
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 3)                                                    // all deactivated (but counters are never decremented)
@@ -246,7 +255,8 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 		usersignups[username] = user.UserSignup
 	}
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                                                            // all signups
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2, wait.NoProvisioningFalse...)                               // all signups
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)                                // no signups in no-provisioning state
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all activated
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 2)                                                    // all activated
@@ -271,7 +281,8 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	}
 
 	// then verify the value of the `sandbox_users_per_activations` metric
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                                                            // all signups (even if deactivated)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2, wait.NoProvisioningFalse...)                               // all signups (even if deactivated)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)                                // no signups in no-provisioning state
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all deactivated (but this metric is never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
@@ -323,7 +334,8 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		// Confirm the CompliantUsername has NOT been set, since verification is required and it hasn't been approved yet
 		require.Empty(t, userSignup.Status.CompliantUsername)
 		// verify the value of the `sandbox_user_signups_verification_required_total` metric
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1) // user is pending verification
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1, wait.NoProvisioningFalse...) // user is pending verification
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
 
 		// Pending verification metric should only be incremented the first time verification is required.
 		// Try entering a verification code and verify that the metric is not incremented.
@@ -344,8 +356,10 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
 			// verify with the correct code
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s", verificationCode), token0, "", http.StatusOK)
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1)                                         // no change after verification initiated
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)                                                            // user provisioned
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1, wait.NoProvisioningFalse...) // no change after verification initiated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)                               // user provisioned
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)                                // no signups in no-provisioning state
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal") // never incremented
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // user activated
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                                    // user approved
@@ -369,8 +383,9 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			require.NoError(t, err)
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
 			require.NoError(t, err)
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1) // no change
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)         // user deactivated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1, wait.NoProvisioningFalse...) // no change
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1) // user deactivated
 		})
 
 		t.Run("metric incremented when user reactivated", func(t *testing.T) {
@@ -390,8 +405,10 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 2) // additional pending verification since user was reactivated
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                    // reactivated UserSignup
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 2, wait.NoProvisioningFalse...) // additional pending verification since user was reactivated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2, wait.NoProvisioningFalse...) // reactivated UserSignup
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)  // no signups in no-provisioning state
 			// no other changes
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal")
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external")
@@ -547,7 +564,8 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "external") // same offset as above: users has been deleted but metric remains unchanged
 }
 
-// TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned
+// TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned.
+// It also covers a gating-only (no-provisioning) signup: unique/banned counters use no_provisioning="true" and approved is unchanged.
 func TestMetricsWhenUsersBanned(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
@@ -575,6 +593,13 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		Execute(t)
 	userSignup := user.UserSignup
 
+	gatingUser := NewSignupRequest(awaitilities).
+		Username("gating-metrics-user").
+		Email("gating-metrics@redhat.com").
+		GatingOnly().
+		RequireConditions(wait.NoProvisioningConditions()...).
+		Execute(t)
+
 	// when creating the BannedUser resource
 	bannedUser := banUser(t, hostAwait, userSignup.Spec.IdentityClaims.Email)
 
@@ -584,16 +609,34 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
 	require.NoError(t, err)
 	// verify the metrics
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningTrue...)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "manual")
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningFalse...)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningTrue...)
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
 	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0) // manual approval and banning is not recorded in provisioned time
+
+	t.Run("ban the gating-only user", func(t *testing.T) {
+		// when
+		_ = banUser(t, hostAwait, gatingUser.UserSignup.Spec.IdentityClaims.Email)
+
+		// then
+		_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(t, gatingUser.UserSignup.Name,
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.NoProvisioningConditions(), wait.Banned())...),
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
+		require.NoError(t, err)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningTrue...)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningFalse...)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningTrue...)
+	})
 
 	t.Run("unban the banned user", func(t *testing.T) {
 		// when unbaning the user
@@ -610,11 +653,13 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, bannedUser.GetName())
 		require.NoError(t, err)
 		// verify the metrics
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)                                          // unchanged: user signup already existed
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)             // unchanged: user signup already existed
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningTrue...)              // gating-only signup from previous subtest
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 2)                                  // user approved
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // unchanged: unbanning uses previous method of approval
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "manual")    // unbanning uses previous method of approval
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1)                                    // unchanged: banneduser already existed
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningFalse...)       // unchanged: banneduser already existed
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningTrue...)        // gating-only user still banned
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space provisioned on member1
@@ -651,11 +696,13 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		Execute(t)
 	mur := user.MUR
 
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic") // automatically approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // not manually approved
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningFalse...)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningTrue...)
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space present on member1
@@ -672,11 +719,13 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 
 	// then
 	// verify the metrics
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // still approved even though (temporarily) disabled
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic") // automatically approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // not manually approved
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningFalse...)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningTrue...)
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space is on member1
@@ -694,11 +743,13 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 
 		// then
 		// verify the metrics
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)                                          // unchanged, user was already provisioned
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1, wait.NoProvisioningFalse...)             // unchanged, user was already provisioned
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 0, wait.NoProvisioningTrue...)              // no signups in no-provisioning state
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic") // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // unchanged, user was already provisioned
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningFalse...)
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0, wait.NoProvisioningTrue...)
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external") // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // unchanged, user was already provisioned
