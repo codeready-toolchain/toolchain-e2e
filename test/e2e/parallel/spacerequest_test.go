@@ -3,7 +3,6 @@ package parallel
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -394,7 +393,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		wait.UntilSpaceHasTier(spaceRequest.Spec.TierName),
 	)
 	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
-	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+	spaceRequest, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 		wait.UntilSpaceRequestHasTierName("appstudio"),
 		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
 		wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
