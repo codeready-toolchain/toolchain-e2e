@@ -1,6 +1,7 @@
 package space
 
 import (
+	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -8,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,11 +96,25 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 
 		// check expected labels on the secret
 		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey])
-		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
+		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
 		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey])
-		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
+		assert.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
 
 		// validate the kube client has access to the namespace name that's in the spacerequest.Status.Namepsacess[n].Name field
 		util.ValidateKubeClient(t, namespaceAccessClient, nsAccess.Name, &corev1.SecretList{})
+	}
+}
+
+func VerifyNamespaceName(t *testing.T, spaceRequest *toolchainv1alpha1.SpaceRequest) {
+	for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
+		// check the namespace name contains the expected prefix:
+		// - normal: first 8 characters of the request name
+		// - collision-adjusted: first 7 characters (the 8th is replaced by a collision digit)
+		if len(spaceRequest.Name) > 8 {
+			assert.True(t, strings.Contains(nsAccess.Name, spaceRequest.Name[:8]) || strings.Contains(nsAccess.Name, spaceRequest.Name[:7]),
+				"expected namespace %q to contain %q (normal) or %q (collision-adjusted)", nsAccess.Name, spaceRequest.Name[:8], spaceRequest.Name[:7])
+		} else {
+			assert.Contains(t, nsAccess.Name, spaceRequest.Name)
+		}
 	}
 }
