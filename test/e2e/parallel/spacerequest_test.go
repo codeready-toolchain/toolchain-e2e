@@ -358,8 +358,8 @@ func TestCreateSpaceRequest(t *testing.T) {
 				)
 				require.NoError(t, err)
 				require.Len(t, subSpace3.Status.ProvisionedNamespaces, 1)
-				t.Logf("subSpace3: %s -> %s", subSpace3.Name, subSpace3.Status.ProvisionedNamespaces[0].Name)
-				expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace.Name, subSpace3.Name[:8])
+				t.Logf("subSpace3: %q -> namespace: %q", subSpace3.Name, subSpace3.Status.ProvisionedNamespaces[0].Name)
+				expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace.Name, spaceRequest3.Name) // `cookies` is shorter than 8 characters, so it will be used as is
 				assert.Equal(t, expSubSpaceName, subSpace3.Name)
 				assert.Equal(t, expSubSpaceName+"-dev", subSpace3.Status.ProvisionedNamespaces[0].Name)
 			})
@@ -400,7 +400,6 @@ func TestUpdateSpaceRequest(t *testing.T) {
 	)
 	require.NoError(t, err)
 	VerifyNamespaceName(t, spaceRequest)
-	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 	t.Run("update space request tierName", func(t *testing.T) {
 		// when

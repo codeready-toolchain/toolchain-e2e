@@ -91,7 +91,7 @@ func NewSpaceRequest(t *testing.T, opts ...SpaceRequestOption) *toolchainv1alpha
 // VerifyNamespaceAccessForSpaceRequest verifies that the secrets in the namespace access list are valid and they can be used to create a kube client.
 func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceRequest *toolchainv1alpha1.SpaceRequest) {
 	for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
-		// create a kube client by ready the secret created in the spacerequest namespace
+		// create a kube client by reading the secret created in the spacerequest namespace
 		namespaceAccessClient, adminSecret := util.NewKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
 
 		// check expected labels on the secret
