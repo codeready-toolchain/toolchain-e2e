@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -34,6 +35,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		// when
 		targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
 		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+			WithName("my-space"),
 			WithSpecTierName("appstudio-env"),
 			WithSpecTargetClusterRoles(targetClusterRoles),
 			WithSpecDisableInheritance(false))
@@ -54,6 +56,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
+		VerifyNamespaceName(t, spaceRequest)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 		t.Run("subSpace is recreated if deleted", func(t *testing.T) {
@@ -281,6 +284,87 @@ func TestCreateSpaceRequest(t *testing.T) {
 		)
 		require.NoError(t, err)
 	})
+
+	t.Run("create multiple space requests with the similar name", func(t *testing.T) {
+		// when
+		// same user and parent space are for all space requests to come
+		user := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			TargetCluster(memberAwait).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
+		parentSpace := user.Space
+
+		// create first space request
+		spaceRequest1 := NewSpaceRequest(t,
+			WithName("foobarbaz"),
+			WithSpecTierName("base1ns"),
+			WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+		)
+		err = memberAwait.CreateWithCleanup(t, spaceRequest1)
+		require.NoError(t, err)
+		subSpace1, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest1.Name, spaceRequest1.Namespace, parentSpace.GetName(),
+			wait.UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		require.Len(t, subSpace1.Status.ProvisionedNamespaces, 1)
+		t.Logf("subSpace1: %s -> %s", subSpace1.Name, subSpace1.Status.ProvisionedNamespaces[0].Name)
+		expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace.Name, spaceRequest1.Name[:8])
+		assert.Equal(t, expSubSpaceName, subSpace1.Name)
+		assert.Equal(t, expSubSpaceName+"-dev", subSpace1.Status.ProvisionedNamespaces[0].Name)
+
+		t.Run("create second space request with the same name", func(t *testing.T) {
+			// given
+			// create second space request with the same first 8 characters to check the collision avoidance mechanism
+			spaceRequest2 := NewSpaceRequest(t,
+				WithName("foobarbazz"),
+				WithSpecTierName("base1ns"),
+				WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+			)
+
+			// when
+			err = memberAwait.CreateWithCleanup(t, spaceRequest2)
+
+			// then
+			require.NoError(t, err)
+			subSpace2, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest2.Name, spaceRequest2.Namespace, parentSpace.GetName(),
+				wait.UntilSpaceHasAnyProvisionedNamespaces(),
+			)
+			require.NoError(t, err)
+			require.Len(t, subSpace2.Status.ProvisionedNamespaces, 1)
+			t.Logf("subSpace2: %s -> %s", subSpace2.Name, subSpace2.Status.ProvisionedNamespaces[0].Name)
+			expSubSpaceName := fmt.Sprintf("%s-%s1", parentSpace.Name, spaceRequest2.Name[:7]) // 7 first characters + "1" to avoid the collision
+			assert.Equal(t, expSubSpaceName, subSpace2.Name)
+			assert.Equal(t, expSubSpaceName+"-dev", subSpace2.Status.ProvisionedNamespaces[0].Name)
+
+			t.Run("create third space request with a name shorter than 8 characters", func(t *testing.T) {
+				// given
+				// create third space request with a name shorter than 8 characters
+				spaceRequest3 := NewSpaceRequest(t,
+					WithName("cookies"),
+					WithSpecTierName("base1ns"),
+					WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
+				)
+
+				// when
+				err = memberAwait.CreateWithCleanup(t, spaceRequest3)
+
+				// then
+				require.NoError(t, err)
+				subSpace3, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest3.Name, spaceRequest3.Namespace, parentSpace.GetName(),
+					wait.UntilSpaceHasAnyProvisionedNamespaces(),
+				)
+				require.NoError(t, err)
+				require.Len(t, subSpace3.Status.ProvisionedNamespaces, 1)
+				t.Logf("subSpace3: %q -> namespace: %q", subSpace3.Name, subSpace3.Status.ProvisionedNamespaces[0].Name)
+				expSubSpaceName := fmt.Sprintf("%s-%s", parentSpace.Name, spaceRequest3.Name) // `cookies` is shorter than 8 characters, so it will be used as is
+				assert.Equal(t, expSubSpaceName, subSpace3.Name)
+				assert.Equal(t, expSubSpaceName+"-dev", subSpace3.Status.ProvisionedNamespaces[0].Name)
+			})
+		})
+	})
 }
 
 func TestUpdateSpaceRequest(t *testing.T) {
@@ -309,13 +393,13 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		wait.UntilSpaceHasTier(spaceRequest.Spec.TierName),
 	)
 	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
-	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+	spaceRequest, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 		wait.UntilSpaceRequestHasTierName("appstudio"),
 		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
 		wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 	)
 	require.NoError(t, err)
-	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+	VerifyNamespaceName(t, spaceRequest)
 
 	t.Run("update space request tierName", func(t *testing.T) {
 		// when
