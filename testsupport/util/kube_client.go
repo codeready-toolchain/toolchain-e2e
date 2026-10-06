@@ -36,7 +36,7 @@ func NewKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretN
 	require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{
 		Namespace: secretNamespace,
 		Name:      secretName,
-	}, adminSecret))
+	}, adminSecret), "secret %q in namespace %q not found", secretName, secretNamespace)
 	assert.NotEmpty(t, adminSecret.Data["kubeconfig"])
 	apiConfig, err := clientcmd.Load(adminSecret.Data["kubeconfig"])
 	require.NoError(t, err)
