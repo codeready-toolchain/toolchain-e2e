@@ -18,7 +18,10 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const fieldManager = "e2e-tests"
+const (
+	fieldManager             = "e2e-tests"
+	defaultApplyRetryTimeout = 30 * time.Second
+)
 
 func GetTemplateFromFile(filepath string) (*templatev1.Template, error) {
 	content, err := os.ReadFile(filepath)
@@ -43,10 +46,19 @@ func GetTemplateFromContent(content []byte) (*templatev1.Template, error) {
 
 // ApplyObjects applies the given objects in order
 func ApplyObjects(ctx context.Context, cl runtimeclient.Client, objsToApply []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+	return applyObjects(ctx, cl, objsToApply, defaultApplyRetryTimeout, false, modifiers...)
+}
+
+// ApplyObjectsWithRetryTimeout applies the given objects in order, retrying each apply on error until retryTimeout.
+func ApplyObjectsWithRetryTimeout(ctx context.Context, cl runtimeclient.Client, objsToApply []runtimeclient.Object, retryTimeout time.Duration, modifiers ...ClientObjectModifier) error {
+	return applyObjects(ctx, cl, objsToApply, retryTimeout, true, modifiers...)
+}
+
+func applyObjects(ctx context.Context, cl runtimeclient.Client, objsToApply []runtimeclient.Object, retryTimeout time.Duration, retryOnError bool, modifiers ...ClientObjectModifier) error {
 	applycl := applyclientlib.NewServerSideApplyClient(cl, fieldManager)
 	for _, obj := range objsToApply {
 		fmt.Printf("Applying %s object with name '%s' in namespace '%s'\n", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), obj.GetNamespace())
-		if err := applyObject(ctx, applycl, obj, modifiers...); err != nil {
+		if err := applyObject(ctx, applycl, obj, retryTimeout, retryOnError, modifiers...); err != nil {
 			return err
 		}
 	}
@@ -113,7 +125,7 @@ func startObjectProcessor(ctx context.Context, cl runtimeclient.Client, objSourc
 	go func() {
 		applycl := applyclientlib.NewServerSideApplyClient(cl, fieldManager)
 		for obj := range objSource {
-			out <- applyObject(ctx, applycl, obj, modifiers...)
+			out <- applyObject(ctx, applycl, obj, defaultApplyRetryTimeout, false, modifiers...)
 			time.Sleep(100 * time.Millisecond)
 		}
 		close(out)
@@ -131,7 +143,7 @@ func NamespaceModifier(userNS string) ClientObjectModifier {
 	}
 }
 
-func applyObject(ctx context.Context, applycl *applyclientlib.ServerSideApplyClient, obj runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+func applyObject(ctx context.Context, applycl *applyclientlib.ServerSideApplyClient, obj runtimeclient.Object, retryTimeout time.Duration, retryOnError bool, modifiers ...ClientObjectModifier) error {
 	// apply any modifiers before applying the object
 	for _, modifier := range modifiers {
 		if err := modifier(obj); err != nil {
@@ -141,12 +153,20 @@ func applyObject(ctx context.Context, applycl *applyclientlib.ServerSideApplyCli
 
 	// retry the apply in case it fails due to errors like the following:
 	// unable to create resource of kind: Deployment, version: v1: Operation cannot be fulfilled on clusterresourcequotas.quota.openshift.io "for-zippy-1882-deployments": the object has been modified; please apply your changes to the latest version and try again
-	if err := k8swait.PollUntilContextTimeout(context.TODO(), cfg.DefaultRetryInterval, 30*time.Second, true, func(context context.Context) (bool, error) {
-		if applyErr := applycl.ApplyObject(ctx, obj); applyErr != nil {
-			return false, applyErr
+	var lastApplyErr error
+	if err := k8swait.PollUntilContextTimeout(ctx, cfg.DefaultRetryInterval, retryTimeout, true, func(context.Context) (bool, error) {
+		lastApplyErr = applycl.ApplyObject(ctx, obj)
+		if lastApplyErr != nil {
+			if retryOnError {
+				return false, nil
+			}
+			return false, lastApplyErr
 		}
 		return true, nil
 	}); err != nil {
+		if lastApplyErr != nil {
+			return fmt.Errorf("could not apply resource '%s' in namespace '%s': %w", obj.GetName(), obj.GetNamespace(), lastApplyErr)
+		}
 		return fmt.Errorf("could not apply resource '%s' in namespace '%s': %w", obj.GetName(), obj.GetNamespace(), err)
 	}
 	return nil

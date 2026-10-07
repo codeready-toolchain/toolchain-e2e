@@ -36,11 +36,20 @@ var Templates = []string{
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
 	"ansible-automation-platform.yaml",
+	"rhoai2_25_10.yaml",
 	"cnv.yaml",
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
-var csvTimeout = 10 * time.Second
+// PostInstallTemplates are applied after operator installation completes.
+var PostInstallTemplates = []string{
+	"rhoai2_25_10.yaml",
+}
+
+var (
+	csvTimeout              = 10 * time.Second
+	postInstallApplyTimeout = 5 * time.Minute
+)
 
 func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	subs := &v1alpha1.SubscriptionList{}
@@ -63,15 +72,36 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	return fmt.Errorf("the sandbox host and/or member operators were not found")
 }
 
-func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
+func processTemplateFile(s *runtime.Scheme, templatePath string) ([]client.Object, error) {
+	tmpl, err := templates.GetTemplateFromFile(templatePath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid template file: '%s': %w", templatePath, err)
+	}
+
+	processor := ctemplate.NewProcessor(s)
+	return processor.Process(tmpl.DeepCopy(), map[string]string{})
+}
+
+func ApplyPostInstallTemplates(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
 	for _, templatePath := range templatePaths {
-		tmpl, err := templates.GetTemplateFromFile(templatePath)
+		objsToProcess, err := processTemplateFile(s, templatePath)
 		if err != nil {
-			return fmt.Errorf("invalid template file: '%s': %w", templatePath, err)
+			return err
 		}
 
-		processor := ctemplate.NewProcessor(s)
-		objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
+		if err := templates.ApplyObjectsWithRetryTimeout(ctx, cl, objsToProcess, postInstallApplyTimeout); err != nil {
+			return err
+		}
+
+		fmt.Printf("Applied post-install template '%s'\n\n", templatePath)
+	}
+
+	return nil
+}
+
+func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
+	for _, templatePath := range templatePaths {
+		objsToProcess, err := processTemplateFile(s, templatePath)
 		if err != nil {
 			return err
 		}

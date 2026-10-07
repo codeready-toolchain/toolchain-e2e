@@ -16,6 +16,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+func TestApplyPostInstallTemplates(t *testing.T) {
+	scheme, err := configuration.NewScheme()
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		// given
+		cl := test.NewFakeClient(t)
+
+		// when
+		err := ApplyPostInstallTemplates(context.TODO(), cl, scheme, []string{"post-install/rhoai2_25_10.yaml"})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("failures", func(t *testing.T) {
+		t.Run("invalid template file", func(t *testing.T) {
+			// given
+			cl := test.NewFakeClient(t)
+
+			// when
+			err := ApplyPostInstallTemplates(context.TODO(), cl, scheme, []string{"post-install/does-not-exist.yaml"})
+
+			// then
+			require.ErrorContains(t, err, "invalid template file: 'post-install/does-not-exist.yaml'")
+		})
+	})
+}
+
 func TestEnsureOperatorsInstalled(t *testing.T) {
 	csvTimeout = time.Millisecond
 	scheme, err := configuration.NewScheme()
