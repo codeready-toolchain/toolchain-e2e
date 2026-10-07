@@ -12,7 +12,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -29,7 +28,7 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 	user := NewSignupRequest(awaitilities).
 		Email("gating@redhat.com").
 		GatingOnly().
-		RequireConditions(noProvisioningConditions...).
+		RequireConditions(wait.NoProvisioningConditions()...).
 		Execute(t)
 	userSignupName := user.UserSignup.Name
 
@@ -173,7 +172,7 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 
 			// then
 			_, err = hostAwait.WaitForUserSignup(t, userSignupName,
-				wait.UntilUserSignupHasConditions(noProvisioningConditions...),
+				wait.UntilUserSignupHasConditions(wait.NoProvisioningConditions()...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNoProvisioning),
 				wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateNoProvisioning),
 				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey),
@@ -210,15 +209,3 @@ func noMurSpaceCreated(t *testing.T, hostAwait *wait.HostAwaitility, userSignupN
 	require.Empty(t, spaces.Items)
 
 }
-
-var noProvisioningConditions = append(wait.Default(),
-	toolchainv1alpha1.Condition{
-		Type:   toolchainv1alpha1.UserSignupComplete,
-		Status: corev1.ConditionTrue,
-		Reason: toolchainv1alpha1.UserSignupInNoProvisioningStateReason,
-	},
-	toolchainv1alpha1.Condition{
-		Type:   toolchainv1alpha1.UserSignupApproved,
-		Status: corev1.ConditionFalse,
-		Reason: toolchainv1alpha1.UserSignupInNoProvisioningStateReason,
-	})
