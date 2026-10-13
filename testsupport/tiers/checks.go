@@ -904,7 +904,7 @@ func resourceQuotaSpaceRequests() namespaceObjectsCheck {
 		spec := corev1.ResourceQuotaSpec{
 			Hard: make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity("1")
+		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-spacerequests", spec)
