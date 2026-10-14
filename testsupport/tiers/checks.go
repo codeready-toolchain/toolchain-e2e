@@ -116,7 +116,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		numberOfLimitRanges(1),
 		limitRange("1", "1Gi", "10m", "64Mi"),
-		resourceQuotaSpaceRequests(),
+		resourceQuotaSpaceRequests("1"),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
@@ -201,7 +201,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 			corev1.ResourceName("limits.nvidia.com/gpu"):   "0",
 		}),
 		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
-		resourceQuotaSpaceRequests(),
+		resourceQuotaSpaceRequests("5"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
@@ -898,13 +898,13 @@ func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs
 	}
 }
 
-func resourceQuotaSpaceRequests() namespaceObjectsCheck {
+func resourceQuotaSpaceRequests(q string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		var err error
 		spec := corev1.ResourceQuotaSpec{
 			Hard: make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity("5")
+		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity(q)
 		require.NoError(t, err)
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-spacerequests", spec)
