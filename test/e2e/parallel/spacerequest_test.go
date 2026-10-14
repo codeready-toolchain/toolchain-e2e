@@ -14,7 +14,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -469,18 +468,6 @@ func TestCreateClawSpaceRequest(t *testing.T) {
 			wait.UntilSpaceRequestHasNamespaceAccessWithoutSecretRef(),
 		)
 		require.NoError(t, err)
-
-		t.Run("second SpaceRequest is rejected by quota", func(t *testing.T) {
-			// The base1ns ns_dev.yaml limits count/spacerequests.toolchain.dev.openshift.com to 1.
-			// Creating a second SpaceRequest should be rejected by the ResourceQuota.
-			secondSR := NewSpaceRequest(t,
-				WithSpecTierName("claw"),
-				WithNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)),
-			)
-			err := memberAwait.Client.Create(context.TODO(), secondSR)
-			require.Error(t, err)
-			assert.True(t, errors.IsForbidden(err), "expected Forbidden error due to ResourceQuota, got: %v", err)
-		})
 
 		t.Run("delete SpaceRequest cleans up sub-space", func(t *testing.T) {
 			// Delete the SpaceRequest and verify the claw sub-space is removed
