@@ -40,8 +40,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crtzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
+
+func init() {
+	ctrl.SetLogger(crtzap.New(crtzap.UseDevMode(true)))
+}
 
 var (
 	initHostAwait    *wait.HostAwaitility
