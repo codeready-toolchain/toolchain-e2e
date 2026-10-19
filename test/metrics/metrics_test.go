@@ -480,7 +480,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic")                   // user automatically approved
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // not deactivated
-			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0) // no tracking of provision time for users with phone verification step
+			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of provision time for users with phone verification step
 			// gating-only counters move only for a no-provisioning signup
 			gaCounts.assert(t, hostAwait)
 		})
@@ -543,6 +543,47 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)
 			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)
+		})
+	})
+
+	t.Run("phone verification of a no-provisioning signup counts phone_verified and verified", func(t *testing.T) {
+		// given
+		gaCounts := currentGatingOnlyCounts(t, hostAwait)
+		user := NewSignupRequest(awaitilities).
+			Email(uuid.NewString() + "@some.domain").
+			GatingOnly().
+			VerificationRequired().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...).
+			Execute(t)
+
+		t.Run("first gating-only GET counts phone_required", func(t *testing.T) {
+			// when
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup?gating-only=true", user.Token, "", http.StatusOK)
+			_, err := hostAwait.WaitForUserSignup(t, user.UserSignup.Name,
+				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+
+			// then
+			require.NoError(t, err)
+			gaCounts.phoneRequired++
+
+			t.Run("phone verification of a no-provisioning signup counts phone_verified and verified", func(t *testing.T) {
+				// when
+				NewHTTPRequest(t).InvokeEndpoint("PUT", route+"/api/v1/signup/verification", user.Token,
+					`{ "country_code":"+61", "phone_number":"408999998" }`, http.StatusNoContent)
+				userSignup, err := hostAwait.WaitForUserSignup(t, user.UserSignup.Name,
+					wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
+
+				// then
+				require.NoError(t, err)
+				NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/"+userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey], user.Token, "", http.StatusOK)
+				_, err = hostAwait.WaitForUserSignup(t, user.UserSignup.Name,
+					wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey),
+					wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateNoProvisioning))
+				require.NoError(t, err)
+				gaCounts.phoneVerified++
+				gaCounts.verified++
+				gaCounts.assert(t, hostAwait)
+			})
 		})
 	})
 }
