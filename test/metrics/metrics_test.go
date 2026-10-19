@@ -546,7 +546,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		})
 	})
 
-	t.Run("phone verification of a no-provisioning signup counts phone_verified and verified", func(t *testing.T) {
+	t.Run("phone verification of a no-provisioning signup counts", func(t *testing.T) {
 		// given
 		gaCounts := currentGatingOnlyCounts(t, hostAwait)
 		user := NewSignupRequest(awaitilities).
@@ -565,6 +565,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			gaCounts.phoneRequired++
+			gaCounts.assert(t, hostAwait)
 
 			t.Run("phone verification of a no-provisioning signup counts phone_verified and verified", func(t *testing.T) {
 				// when
