@@ -452,7 +452,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		// Pending verification metric should only be incremented the first time verification is required.
 		// Try entering a verification code and verify that the metric is not incremented.
-		t.Run("when verification initiated only gating-only related metrics are updated", func(t *testing.T) {
+		t.Run("phone verification of a provisioning signup does not count gating-only", func(t *testing.T) {
 			// when
 			// Initiate the verification process
 			NewHTTPRequest(t).InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token0,
@@ -480,11 +480,8 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic")                   // user automatically approved
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // not deactivated
-			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of provision time for users with phone verification step
-			// check the gating only metrics have been updated
-			require.NoError(t, err)
-			gaCounts.phoneVerified++
-			gaCounts.verified++
+			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0) // no tracking of provision time for users with phone verification step
+			// gating-only counters move only for a no-provisioning signup
 			gaCounts.assert(t, hostAwait)
 		})
 
