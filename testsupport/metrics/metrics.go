@@ -43,7 +43,7 @@ func getMetricValue[T any](restConfig *rest.Config, baseURL string, family strin
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		},
 	}
-	request, err := http.NewRequest("Get", uri, nil)
+	request, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
