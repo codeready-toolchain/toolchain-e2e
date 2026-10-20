@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.9
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20260917102240-88cd1578ea41
+	github.com/codeready-toolchain/api v0.0.0-20261020083318-44fc690c9723
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20260917104434-e674386460b1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/fatih/color v1.18.0
@@ -34,8 +34,6 @@ require (
 	k8s.io/metrics v0.33.4
 	sigs.k8s.io/controller-runtime v0.21.0
 )
-
-replace github.com/codeready-toolchain/api => github.com/matousjobanek/api v0.0.0-20261019082536-11e947e0da95
 
 require (
 	github.com/google/uuid v1.6.0
