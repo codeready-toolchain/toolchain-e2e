@@ -41,9 +41,11 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 	require.NoError(t, err)
 	// activation counter is not set
 	assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupActivationCounterAnnotationKey])
-	// no compliant username set
+	// no compliant username set, and gating has not been requested yet
 	require.Empty(t, userSignup.Status.CompliantUsername)
+	assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 	noMurSpaceCreated(t, hostAwait, userSignupName)
+	var gatingOnlyAt string
 
 	t.Run("Get request with gating-only returns verified", func(t *testing.T) {
 		// when
@@ -55,11 +57,35 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 		// then
 		require.False(t, signupStatus["verificationRequired"].(bool))
 		require.True(t, signupStatus["verified"].(bool))
+		userSignup, err = hostAwait.WaitForUserSignup(t, userSignupName,
+			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+		require.NoError(t, err)
+		gatingOnlyAt = userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey]
+
+		t.Run("another gating-only GET leaves the annotation", func(t *testing.T) {
+			// when
+			_, signupStatus := ParseSignupResponse(t,
+				NewHTTPRequest(t).
+					InvokeEndpoint("GET", gatingSignupPath, user.Token, "", http.StatusOK).
+					UnmarshalMap())
+
+			// then
+			require.False(t, signupStatus["verificationRequired"].(bool))
+			require.True(t, signupStatus["verified"].(bool))
+			_, err = hostAwait.WaitForUserSignup(t, userSignupName,
+				wait.UntilUserSignupHasAnnotation(toolchainv1alpha1.UserSignupGatingOnlyKey, gatingOnlyAt))
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("Get request without gating-only returns not-found", func(t *testing.T) {
-		// when & then
+		// when
 		NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", user.Token, "", http.StatusNotFound)
+
+		// then
+		_, err = hostAwait.WaitForUserSignup(t, userSignupName,
+			wait.UntilUserSignupHasAnnotation(toolchainv1alpha1.UserSignupGatingOnlyKey, gatingOnlyAt))
+		require.NoError(t, err)
 	})
 
 	t.Run("another POST request with gating-only fails with conflict", func(t *testing.T) {
@@ -72,12 +98,19 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
 			Update(userSignupName, hostAwait.Namespace, func(us *toolchainv1alpha1.UserSignup) {
 				us.Annotations[toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey] = time.Now().Add(-10 * 24 * time.Hour).Format(time.RFC3339)
+				// let's remove it to verify that the GET won't add it back when it's expired (returns not found requested reactivation)
+				delete(us.Annotations, toolchainv1alpha1.UserSignupGatingOnlyKey)
 			})
 		require.NoError(t, err)
 
-		// when & then
+		// when
 		NewHTTPRequest(t).
 			InvokeEndpoint("GET", gatingSignupPath, user.Token, "", http.StatusNotFound)
+
+		// then — expired verification returns before the annotation is written
+		userSignup, err = hostAwait.WaitForUserSignup(t, userSignupName)
+		require.NoError(t, err)
+		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 
 		t.Run("and it is possible to reactivate", func(t *testing.T) {
 			// when
@@ -89,8 +122,9 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 				wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateNoProvisioning),
 				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey))
 			require.NoError(t, err)
-			// activation counter is not set
+			// activation counter is not set, and reactivation does not add gating-only timestamp
 			assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupActivationCounterAnnotationKey])
+			assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 		})
 	})
 
@@ -134,6 +168,9 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 				// then
 				require.False(t, signupStatus["verificationRequired"].(bool))
 				require.True(t, signupStatus["verified"].(bool))
+				_, err = hostAwait.WaitForUserSignup(t, userSignupName,
+					wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+				require.NoError(t, err)
 
 				t.Run("POST request fails with conflict", func(t *testing.T) {
 					// when & then
@@ -160,12 +197,21 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 				Update(userSignup.Name, hostAwait.Namespace,
 					func(us *toolchainv1alpha1.UserSignup) {
 						states.SetDeactivated(us, true)
+						delete(us.Annotations, toolchainv1alpha1.UserSignupGatingOnlyKey)
 					})
 			require.NoError(t, err)
 			_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 			require.NoError(t, err)
+
+			// when — deactivated signups return before the annotation is written
+			NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, user.Token, "", http.StatusNotFound)
+
+			// then
+			deactivated, err := hostAwait.WaitForUserSignup(t, userSignup.Name)
+			require.NoError(t, err)
+			assert.Empty(t, deactivated.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 
 			// when
 			NewHTTPRequest(t).InvokeEndpoint("POST", gatingSignupPath, user.Token, "", http.StatusAccepted)
@@ -181,6 +227,9 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 				// compliant username stays there too
 				wait.UntilUserSignupHasCompliantUsername())
 			require.NoError(t, err)
+			reactivated, err := hostAwait.WaitForUserSignup(t, userSignupName)
+			require.NoError(t, err)
+			assert.Empty(t, reactivated.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 
 			t.Run("Get request with gating only returns verified", func(t *testing.T) {
 				// when
@@ -192,6 +241,9 @@ func TestRequestsWithGatingOnly(t *testing.T) {
 				// then
 				require.False(t, signupStatus["verificationRequired"].(bool))
 				require.True(t, signupStatus["verified"].(bool))
+				_, err = hostAwait.WaitForUserSignup(t, userSignupName,
+					wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+				require.NoError(t, err)
 			})
 		})
 	})

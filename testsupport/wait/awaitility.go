@@ -349,6 +349,30 @@ func (a *Awaitility) GetMetricValueOrZero(t *testing.T, family string, labelAndV
 	return 0
 }
 
+// GetRegistrationServiceMetricValueOrZero reads a metric from the registration-service metrics endpoint.
+// It returns 0 when the series does not exist yet.
+func (a *HostAwaitility) GetRegistrationServiceMetricValueOrZero(t *testing.T, family string, labelAndValues ...string) float64 {
+	if len(labelAndValues)%2 != 0 {
+		t.Fatal("`labelAndValues` must be pairs of labels and values")
+	}
+	if value, err := metrics.GetMetricValue(a.RestConfig, a.RegistrationServiceMetricsURL, family, labelAndValues); err == nil {
+		return value
+	}
+	return 0
+}
+
+// WaitForRegistrationServiceMetricValue waits until a registration-service metric reaches the expected value.
+// The series must be present, including when the expected value is 0.
+func (a *HostAwaitility) WaitForRegistrationServiceMetricValue(t *testing.T, family string, expectedValue float64, labels ...string) {
+	t.Logf("waiting for registration-service metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
+	var value float64
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		value, err = metrics.GetMetricValue(a.RestConfig, a.RegistrationServiceMetricsURL, family, labels)
+		return value == expectedValue && err == nil, nil
+	})
+	require.NoError(t, err, "waited for registration-service metric '%s{%v}' to reach '%v'. Current value: %v", family, labels, expectedValue, value)
+}
+
 // WaitUntiltMetricHasValue asserts that the exposed metric with the given family
 // and label key-value pair reaches the expected value
 func (a *Awaitility) WaitUntiltMetricHasValue(t *testing.T, family string, expectedValue float64, labels ...string) {

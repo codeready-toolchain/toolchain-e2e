@@ -136,7 +136,9 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+	hostAwait.UpdateToolchainConfig(t,
+		testconfig.AutomaticApproval().Enabled(false),
+		testconfig.RegistrationService().Replicas(1)) // one replica to easy scrape reg-service metrics
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 
 	toolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
@@ -151,7 +153,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait2.ClusterName)
 	})
 
-	signupsMember2 := map[string]*toolchainv1alpha1.UserSignup{}
+	signupsMember2 := map[string]*SignupResult{}
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
 
@@ -164,9 +166,9 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 			TargetCluster(memberAwait2).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
-		signupsMember2[username] = user.UserSignup
+		signupsMember2[username] = user
 	}
-	NewSignupRequest(awaitilities).
+	standardUser := NewSignupRequest(awaitilities).
 		Username("member1").
 		Email("member1@acme.com").
 		ManuallyApprove().
@@ -175,12 +177,52 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
-	NewSignupRequest(awaitilities).
+	gatingUser := NewSignupRequest(awaitilities).
 		Username("gating-metrics-user").
 		Email("gating-metrics@redhat.com").
 		GatingOnly().
 		RequireConditions(wait.NoProvisioningConditions()...).
 		Execute(t)
+	gatingSignup, err := hostAwait.WaitForUserSignup(t, gatingUser.UserSignup.Name,
+		wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey))
+	require.NoError(t, err)
+	assert.Empty(t, gatingSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+	gaCounts := currentGatingOnlyCounts(t, hostAwait)
+	gatingSignupPath := hostAwait.RegistrationServiceURL + "/api/v1/signup?gating-only=true"
+
+	t.Run("first gating-only GET counts verified", func(t *testing.T) {
+		// when
+		_, signupStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, gatingUser.Token, "", http.StatusOK).UnmarshalMap())
+
+		// then
+		require.True(t, signupStatus["verified"].(bool))
+		_, err = hostAwait.WaitForUserSignup(t, gatingUser.UserSignup.Name,
+			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+		require.NoError(t, err)
+		gaCounts.verified++
+		gaCounts.assert(t, hostAwait)
+
+		t.Run("another gating-only GET does not count again", func(t *testing.T) {
+			// when
+			NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, gatingUser.Token, "", http.StatusOK)
+
+			// then
+			gaCounts.assert(t, hostAwait)
+		})
+
+		t.Run("gating-only for standard user counts", func(t *testing.T) {
+			// when
+			_, signupStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, standardUser.Token, "", http.StatusOK).UnmarshalMap())
+
+			// then
+			require.True(t, signupStatus["verified"].(bool))
+			_, err = hostAwait.WaitForUserSignup(t, standardUser.UserSignup.Name,
+				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+			require.NoError(t, err)
+			gaCounts.verified++
+			gaCounts.assert(t, hostAwait)
+		})
+	})
 
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3, wait.NoProvisioningFalse...)                               // sandbox signups
@@ -198,7 +240,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	// when deactivating the users
 	for username, usersignup := range signupsMember2 {
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(usersignup.Name, hostAwait.Namespace,
+			Update(usersignup.UserSignup.Name, hostAwait.Namespace,
 				func(usersignup *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(usersignup, true)
 				})
@@ -223,6 +265,38 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space still in member-1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces deleted from member-2
 	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no change when deactivated
+
+	t.Run("rejected signup counts rejected", func(t *testing.T) {
+		// given
+		toReject := signupsMember2["user-0001"]
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(toReject.UserSignup.Name, hostAwait.Namespace, func(us *toolchainv1alpha1.UserSignup) {
+				states.SetRejected(us, true)
+				delete(us.Annotations, toolchainv1alpha1.UserSignupGatingOnlyKey)
+			})
+		require.NoError(t, err)
+		_, err = hostAwait.WaitForUserSignup(t, toReject.UserSignup.Name,
+			wait.UntilUserSignupContainsConditions(wait.Rejected()...))
+		require.NoError(t, err)
+
+		// when
+		NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, toReject.Token, "", http.StatusForbidden)
+
+		// then
+		_, err = hostAwait.WaitForUserSignup(t, toReject.UserSignup.Name,
+			wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+		require.NoError(t, err)
+		gaCounts.rejected++
+		gaCounts.assert(t, hostAwait)
+
+		t.Run("another gating-only GET does not count again", func(t *testing.T) {
+			// when
+			NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, toReject.Token, "", http.StatusForbidden)
+
+			// then
+			gaCounts.assert(t, hostAwait)
+		})
+	})
 }
 
 // TestMetricsWhenUsersAutomaticallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
@@ -300,7 +374,9 @@ func TestVerificationRequiredMetric(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 	route := hostAwait.RegistrationServiceURL
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+	hostAwait.UpdateToolchainConfig(t,
+		testconfig.AutomaticApproval().Enabled(true),
+		testconfig.RegistrationService().Replicas(1)) // one replica to easy scrape reg-service metrics
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
@@ -333,13 +409,50 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		// Confirm the CompliantUsername has NOT been set, since verification is required and it hasn't been approved yet
 		require.Empty(t, userSignup.Status.CompliantUsername)
+		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 		// verify the value of the `sandbox_user_signups_verification_required_total` metric
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1, wait.NoProvisioningFalse...) // user is pending verification
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
 
+		gaCounts := currentGatingOnlyCounts(t, hostAwait)
+		gatingSignupPath := route + "/api/v1/signup?gating-only=true"
+
+		t.Run("GET without gating-only does not count", func(t *testing.T) {
+			// when
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", token0, "", http.StatusOK)
+
+			// then
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username)
+			require.NoError(t, err)
+			assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+			gaCounts.assert(t, hostAwait)
+		})
+
+		t.Run("first gating-only GET counts phone_required", func(t *testing.T) {
+			// when
+			_, signupStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, token0, "", http.StatusOK).UnmarshalMap())
+
+			// then
+			require.True(t, signupStatus["verificationRequired"].(bool))
+			require.False(t, signupStatus["verified"].(bool))
+			_, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+			require.NoError(t, err)
+			gaCounts.phoneRequired++
+			gaCounts.assert(t, hostAwait)
+
+			t.Run("another gating-only GET does not count again", func(t *testing.T) {
+				// when
+				NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, token0, "", http.StatusOK)
+
+				// then
+				gaCounts.assert(t, hostAwait)
+			})
+		})
+
 		// Pending verification metric should only be incremented the first time verification is required.
 		// Try entering a verification code and verify that the metric is not incremented.
-		t.Run("no change to metric when verification initiated", func(t *testing.T) {
+		t.Run("phone verification of a provisioning signup does not count gating-only", func(t *testing.T) {
 			// when
 			// Initiate the verification process
 			NewHTTPRequest(t).InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token0,
@@ -354,6 +467,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			require.NotEmpty(t, verificationCode)
 			// Attempt to verify with an incorrect verification code
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+			gaCounts.assert(t, hostAwait)
 			// verify with the correct code
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s", verificationCode), token0, "", http.StatusOK)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1, wait.NoProvisioningFalse...) // no change after verification initiated
@@ -367,6 +481,8 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // not deactivated
 			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of provision time for users with phone verification step
+			// gating-only counters move only for a no-provisioning signup
+			gaCounts.assert(t, hostAwait)
 		})
 
 		t.Run("no change to metric when user deactivated", func(t *testing.T) {
@@ -375,6 +491,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 				Update(userSignup.Name, hostAwait.Namespace,
 					func(usersignup *toolchainv1alpha1.UserSignup) {
 						states.SetDeactivated(usersignup, true)
+						delete(usersignup.Annotations, toolchainv1alpha1.UserSignupGatingOnlyKey)
 					})
 
 			// then
@@ -386,6 +503,13 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1, wait.NoProvisioningFalse...) // no change
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1) // user deactivated
+
+			// a deactivated signup returns before the annotation is written
+			NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, token0, "", http.StatusNotFound)
+			deactivated, err := hostAwait.WaitForUserSignup(t, identity0.Username)
+			require.NoError(t, err)
+			assert.Empty(t, deactivated.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+			gaCounts.assert(t, hostAwait)
 		})
 
 		t.Run("metric incremented when user reactivated", func(t *testing.T) {
@@ -405,6 +529,8 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
+			assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+			gaCounts.assert(t, hostAwait)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 2, wait.NoProvisioningFalse...) // additional pending verification since user was reactivated
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 0, wait.NoProvisioningTrue...)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2, wait.NoProvisioningFalse...) // reactivated UserSignup
@@ -417,6 +543,48 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)
 			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)
+		})
+	})
+
+	t.Run("phone verification of a no-provisioning signup counts", func(t *testing.T) {
+		// given
+		gaCounts := currentGatingOnlyCounts(t, hostAwait)
+		user := NewSignupRequest(awaitilities).
+			Email(uuid.NewString() + "@some.domain").
+			GatingOnly().
+			VerificationRequired().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...).
+			Execute(t)
+
+		t.Run("first gating-only GET counts phone_required", func(t *testing.T) {
+			// when
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup?gating-only=true", user.Token, "", http.StatusOK)
+			_, err := hostAwait.WaitForUserSignup(t, user.UserSignup.Name,
+				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+
+			// then
+			require.NoError(t, err)
+			gaCounts.phoneRequired++
+			gaCounts.assert(t, hostAwait)
+
+			t.Run("phone verification of a no-provisioning signup counts phone_verified and verified", func(t *testing.T) {
+				// when
+				NewHTTPRequest(t).InvokeEndpoint("PUT", route+"/api/v1/signup/verification", user.Token,
+					`{ "country_code":"+61", "phone_number":"408999998" }`, http.StatusNoContent)
+				userSignup, err := hostAwait.WaitForUserSignup(t, user.UserSignup.Name,
+					wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey))
+
+				// then
+				require.NoError(t, err)
+				NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/"+userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey], user.Token, "", http.StatusOK)
+				_, err = hostAwait.WaitForUserSignup(t, user.UserSignup.Name,
+					wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey),
+					wait.UntilUserSignupMatchesStates(toolchainv1alpha1.UserSignupStateNoProvisioning))
+				require.NoError(t, err)
+				gaCounts.phoneVerified++
+				gaCounts.verified++
+				gaCounts.assert(t, hostAwait)
+			})
 		})
 	})
 }
@@ -572,7 +740,9 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-
+	hostAwait.UpdateToolchainConfig(t,
+		testconfig.AutomaticApproval().Enabled(false),
+		testconfig.RegistrationService().Replicas(1))
 	// given
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
@@ -581,7 +751,6 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait2.ClusterName) // wait until counter is back to 0
 	})
 
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	// Create a new UserSignup and approve it manually
 	user := NewSignupRequest(awaitilities).
 		Username("metricsbanprovisioned").
@@ -636,6 +805,30 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningFalse...)
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 1, wait.NoProvisioningTrue...)
+
+		t.Run("gating-only GET counts banned", func(t *testing.T) {
+			// given
+			gaCounts := currentGatingOnlyCounts(t, hostAwait)
+			gatingSignupPath := hostAwait.RegistrationServiceURL + "/api/v1/signup?gating-only=true"
+
+			// when
+			NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, gatingUser.Token, "", http.StatusForbidden)
+
+			// then
+			_, err := hostAwait.WaitForUserSignup(t, gatingUser.UserSignup.Name,
+				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+			require.NoError(t, err)
+			gaCounts.banned++
+			gaCounts.assert(t, hostAwait)
+
+			t.Run("another gating-only GET does not count again", func(t *testing.T) {
+				// when
+				NewHTTPRequest(t).InvokeEndpoint("GET", gatingSignupPath, gatingUser.Token, "", http.StatusForbidden)
+
+				// then
+				gaCounts.assert(t, hostAwait)
+			})
+		})
 	})
 
 	t.Run("unban the banned user", func(t *testing.T) {
@@ -832,4 +1025,32 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
 		})
 	})
+}
+
+type gatingOnlyCounts struct {
+	phoneRequired float64
+	phoneVerified float64
+	verified      float64
+	banned        float64
+	rejected      float64
+}
+
+func currentGatingOnlyCounts(t *testing.T, hostAwait *wait.HostAwaitility) gatingOnlyCounts {
+	t.Helper()
+	return gatingOnlyCounts{
+		phoneRequired: hostAwait.GetRegistrationServiceMetricValueOrZero(t, wait.UserSignupsGatingOnlyMetric, "state", "phone_required"),
+		phoneVerified: hostAwait.GetRegistrationServiceMetricValueOrZero(t, wait.UserSignupsGatingOnlyMetric, "state", "phone_verified"),
+		verified:      hostAwait.GetRegistrationServiceMetricValueOrZero(t, wait.UserSignupsGatingOnlyMetric, "state", "verified"),
+		banned:        hostAwait.GetRegistrationServiceMetricValueOrZero(t, wait.UserSignupsGatingOnlyMetric, "state", "banned"),
+		rejected:      hostAwait.GetRegistrationServiceMetricValueOrZero(t, wait.UserSignupsGatingOnlyMetric, "state", "rejected"),
+	}
+}
+
+func (c gatingOnlyCounts) assert(t *testing.T, hostAwait *wait.HostAwaitility) {
+	t.Helper()
+	hostAwait.WaitForRegistrationServiceMetricValue(t, wait.UserSignupsGatingOnlyMetric, c.phoneRequired, "state", "phone_required")
+	hostAwait.WaitForRegistrationServiceMetricValue(t, wait.UserSignupsGatingOnlyMetric, c.phoneVerified, "state", "phone_verified")
+	hostAwait.WaitForRegistrationServiceMetricValue(t, wait.UserSignupsGatingOnlyMetric, c.verified, "state", "verified")
+	hostAwait.WaitForRegistrationServiceMetricValue(t, wait.UserSignupsGatingOnlyMetric, c.banned, "state", "banned")
+	hostAwait.WaitForRegistrationServiceMetricValue(t, wait.UserSignupsGatingOnlyMetric, c.rejected, "state", "rejected")
 }

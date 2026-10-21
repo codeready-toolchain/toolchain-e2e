@@ -125,6 +125,9 @@ const (
 	RegistrationServiceCommitMetric      = "sandbox_registration_service_commit"
 	RegistrationServiceShortCommitMetric = "sandbox_registration_service_short_commit"
 
+	// UserSignupsGatingOnlyMetric is exposed by the registration service, labeled by state.
+	UserSignupsGatingOnlyMetric = "user_signups_gating_only_total"
+
 	SignupProvisionTimeMetric = "sandbox_user_signup_provision_time"
 )
 

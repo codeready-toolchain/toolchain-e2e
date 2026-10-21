@@ -568,6 +568,7 @@ func testPhoneVerification(t *testing.T, gatingOnly bool) {
 		require.NoError(t, err)
 
 		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey]) // not verified yet
+		assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 		email := userSignup.Spec.IdentityClaims.Email
 		assert.Equal(t, emailAddress, email)
@@ -581,6 +582,17 @@ func testPhoneVerification(t *testing.T, gatingOnly bool) {
 		assert.Equal(t, notProvisonedReason, mpStatus["reason"])
 		require.True(t, mpStatus["verificationRequired"].(bool))
 		require.False(t, mpStatus["verified"].(bool))
+		gatingOnlyAt := ""
+		if gatingOnly {
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+				wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+			require.NoError(t, err)
+			gatingOnlyAt = userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey]
+		} else {
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username)
+			require.NoError(t, err)
+			assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+		}
 
 		// Confirm that a MUR and space haven't been created
 		murs := &toolchainv1alpha1.MasterUserRecordList{}
@@ -596,15 +608,23 @@ func testPhoneVerification(t *testing.T, gatingOnly bool) {
 			t.Run("normal signup gets not-found, reactivation is required", func(t *testing.T) {
 				// when
 				NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", token0, "", http.StatusNotFound)
+
+				// then
+				userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+					wait.UntilUserSignupHasAnnotation(toolchainv1alpha1.UserSignupGatingOnlyKey, gatingOnlyAt))
+				require.NoError(t, err)
 			})
-		} else {
-			t.Run("request with gating-only returns unverified when signup is still in verification-required state", func(t *testing.T) {
+
+			t.Run("another gating-only GET leaves the annotation", func(t *testing.T) {
 				// when
 				_, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup?gating-only=true", token0, "", http.StatusOK).UnmarshalMap())
 
 				// then
 				require.True(t, mpStatus["verificationRequired"].(bool))
 				require.False(t, mpStatus["verified"].(bool))
+				userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+					wait.UntilUserSignupHasAnnotation(toolchainv1alpha1.UserSignupGatingOnlyKey, gatingOnlyAt))
+				require.NoError(t, err)
 			})
 		}
 
@@ -644,6 +664,11 @@ func testPhoneVerification(t *testing.T, gatingOnly bool) {
 
 				// Confirm that signup is not verified yet
 				assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey])
+				if gatingOnly {
+					assert.Equal(t, gatingOnlyAt, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+				} else {
+					assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+				}
 			})
 
 			t.Run("verify with correct code", func(t *testing.T) {
@@ -672,8 +697,13 @@ func testPhoneVerification(t *testing.T, gatingOnly bool) {
 				require.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCounterAnnotationKey])
 				require.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
 
-				// Signup is verified
+				// Signup is verified. A successful code check does not set gating-requested.
 				require.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerifiedTimestampAnnotationKey])
+				if gatingOnly {
+					assert.Equal(t, gatingOnlyAt, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+				} else {
+					assert.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey])
+				}
 
 				t.Run("after verification GET call returns verified and not provisioned", func(t *testing.T) {
 					// when
@@ -727,6 +757,22 @@ func testPhoneVerification(t *testing.T, gatingOnly bool) {
 								// then
 								require.False(t, mpStatus["verificationRequired"].(bool))
 								require.True(t, mpStatus["verified"].(bool))
+								marked, err := hostAwait.WaitForUserSignup(t, identity0.Username,
+									wait.UntilUserSignupHasAnnotationNotEmpty(toolchainv1alpha1.UserSignupGatingOnlyKey))
+								require.NoError(t, err)
+								gatingOnlyAt := marked.Annotations[toolchainv1alpha1.UserSignupGatingOnlyKey]
+
+								t.Run("another gating-only GET leaves the annotation", func(t *testing.T) {
+									// when
+									_, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup?gating-only=true", token0, "", http.StatusOK).UnmarshalMap())
+
+									// then
+									require.False(t, mpStatus["verificationRequired"].(bool))
+									require.True(t, mpStatus["verified"].(bool))
+									_, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+										wait.UntilUserSignupHasAnnotation(toolchainv1alpha1.UserSignupGatingOnlyKey, gatingOnlyAt))
+									require.NoError(t, err)
+								})
 							})
 						})
 					}
