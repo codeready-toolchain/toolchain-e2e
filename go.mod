@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20261020083318-44fc690c9723
