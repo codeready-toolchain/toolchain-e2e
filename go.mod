@@ -1,8 +1,6 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
-go 1.26.0
-
-toolchain go1.26.9
+go 1.27.4
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20261020083318-44fc690c9723
@@ -12,11 +10,13 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.7.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/manifoldco/promptui v0.9.0
+	github.com/mxschmitt/playwright-go v0.6100.0
 	// using latest commit from 'github.com/openshift/api branch release-4.19'
 	github.com/openshift/api v0.0.0-20260107143020-50517c6f4bfd
 	github.com/operator-framework/api v0.34.0
@@ -26,6 +26,7 @@ require (
 	github.com/prometheus/common v0.66.1
 	github.com/redhat-cop/operator-utils v1.3.8
 	github.com/spf13/cobra v1.9.1
+	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.33.4
 	k8s.io/apimachinery v0.33.4
@@ -33,12 +34,6 @@ require (
 	k8s.io/kubectl v0.33.4
 	k8s.io/metrics v0.33.4
 	sigs.k8s.io/controller-runtime v0.21.0
-)
-
-require (
-	github.com/google/uuid v1.6.0
-	github.com/mxschmitt/playwright-go v0.6100.0
-	github.com/spf13/viper v1.20.1
 )
 
 require (
