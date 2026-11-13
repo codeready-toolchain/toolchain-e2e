@@ -44,13 +44,32 @@ set_tags() {
     BUNDLE_AND_INDEX_TAG=${TAGS}
 }
 
+record_e2e_image() {
+    if [[ "${E2E_IMAGE_BUILD_ONLY:-}" != "true" ]]; then
+        return 0
+    fi
+    local dir="${E2E_IMAGE_LIST_DIR:-${GITHUB_WORKSPACE:-/tmp}/e2e-images}"
+    mkdir -p "${dir}"
+    printf '%s\n' "$1" >> "${dir}/images.txt"
+}
+
 push_image() {
     GIT_COMMIT_ID=$(git --git-dir=${REPOSITORY_PATH}/.git --work-tree=${REPOSITORY_PATH} rev-parse --short HEAD)
     IMAGE_LOC=quay.io/codeready-toolchain/${REPOSITORY_NAME}:${GIT_COMMIT_ID}
     if is_provided_or_paired; then
         IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
-        make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+        if [[ "${E2E_IMAGE_BUILD_ONLY:-}" == "true" ]]; then
+            make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-image QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+        else
+            make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+        fi
         IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/${REPOSITORY_NAME}:${TAGS}
+        if [[ "${E2E_IMAGE_BUILD_ONLY:-}" == "true" ]]; then
+            record_e2e_image "${IMAGE_LOC}"
+            if [[ "${REPOSITORY_NAME}" == "member-operator" ]]; then
+                record_e2e_image "quay.io/${QUAY_NAMESPACE}/${REPOSITORY_NAME}-webhook:${TAGS}"
+            fi
+        fi
     fi
 }
 

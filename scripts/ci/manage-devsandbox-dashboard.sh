@@ -165,9 +165,28 @@ if [[ "${DEPLOY_LATEST}" != "true" ]] && [[ -n "${CI}${UI_REPO_PATH}" ]] && [[ $
         IMAGE_LOC="quay.io/${QUAY_NAMESPACE}/sandbox-rhdh-plugin:${TAGS}"
         if [[ ${PUBLISH_UI} == "true" ]]; then
             # push image if provided or paired, otherwise use default image
-            echo "Going to push Developer Sandbox Dashboard image..."
             IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
-            make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+            if [[ "${E2E_IMAGE_BUILD_ONLY:-}" == "true" ]]; then
+                echo "Going to build Developer Sandbox Dashboard image without pushing..."
+                if make -C ${REPOSITORY_PATH} -n ${IMAGE_BUILDER}-image >/dev/null 2>&1; then
+                    make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-image QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+                else
+                    echo "devsandbox-dashboard has no ${IMAGE_BUILDER}-image target; packaging sandbox-rhdh-plugin without pushing"
+                    (
+                        cd ${REPOSITORY_PATH}
+                        rm -rf plugins/sandbox/dist-dynamic
+                        rm -rf red-hat-developer-hub-backstage-plugin-sandbox
+                        yarn install
+                        npx --yes @janus-idp/cli@latest package package-dynamic-plugins \
+                          --tag "${IMAGE_LOC}" \
+                          --platform "${IMAGE_PLATFORM:-linux/amd64}"
+                    )
+                fi
+                record_e2e_image "${IMAGE_LOC}"
+            else
+                echo "Going to push Developer Sandbox Dashboard image..."
+                make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
+            fi
         fi
     fi
 fi

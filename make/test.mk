@@ -294,6 +294,7 @@ deploy-single-member-e2e-latest:
 publish-current-bundles-for-e2e: PUBLISH_UI=true
 publish-current-bundles-for-e2e: DEPLOY_UI=false
 publish-current-bundles-for-e2e: get-and-publish-operators get-and-publish-devsandbox-dashboard
+	@if [[ "$(E2E_IMAGE_BUILD_ONLY)" == "true" ]]; then ./scripts/ci/save-e2e-images.sh; fi
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
