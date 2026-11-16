@@ -61,6 +61,7 @@ var (
 // the e2e test it retrieves namespace names. Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
 func WaitForOperators(t *testing.T) wait.Awaitilities {
+	fmt.Println("running")
 	initOnce.Do(func() {
 		waitForOperators(t)
 	})
