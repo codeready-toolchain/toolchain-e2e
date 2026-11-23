@@ -15,4 +15,4 @@ while IFS= read -r ref; do
     images+=("${ref}")
 done < "${list}"
 
-podman save -o "${dir}/e2e-images.tar" "${images[@]}"
+podman save --multi-image-archive -o "${dir}/e2e-images.tar" "${images[@]}"
