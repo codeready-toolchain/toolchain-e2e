@@ -18,10 +18,10 @@ github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e h1:fY5BOSpyZCqRo5O
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
-github.com/codeready-toolchain/api v0.0.0-20261020083318-44fc690c9723 h1:XYFkqDL31TySpmw+KccKGvR8TChBob/ptVwXqsIXyOY=
-github.com/codeready-toolchain/api v0.0.0-20261020083318-44fc690c9723/go.mod h1:B4Z/YWsDgQBtGQnxCcyBWVZI5Pb1v9BV+h1nrd8uWXw=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20260917104434-e674386460b1 h1:mcIhCo0z6i/DMlqLW7mj5EGh7HoMhSO5Yb+ujXP0GnM=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20260917104434-e674386460b1/go.mod h1:iBQ+bkjvGoy6HKdtY84PafL3IQf+VXezqqnb+t8mvW0=
+github.com/codeready-toolchain/api v0.0.0-20261124082612-04e0e4655cee h1:1QkaZ8QEbXKstywQ9wx7YEH1iXFCcRD8KNEo06Y5SgE=
+github.com/codeready-toolchain/api v0.0.0-20261124082612-04e0e4655cee/go.mod h1:Ro+ZnSAcT+8T/Zhv6tEwnhhAjdXLaDXt/AUJ2MSPvzk=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20261124090041-0bbe82c4969f h1:RIXgtSorMfdUcMOhre++YMFHRDFEpkpvim8KwAGy8BI=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20261124090041-0bbe82c4969f/go.mod h1:MXfcmWbqyDHwsSG5Ivje7yVz36fw2uUpm42yMM44Oi4=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

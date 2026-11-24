@@ -5,8 +5,8 @@ go 1.26.0
 toolchain go1.27.4
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20261020083318-44fc690c9723
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20260917104434-e674386460b1
+	github.com/codeready-toolchain/api v0.0.0-20261124082612-04e0e4655cee
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20261124090041-0bbe82c4969f
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/fatih/color v1.18.0
 	github.com/ghodss/yaml v1.0.0
