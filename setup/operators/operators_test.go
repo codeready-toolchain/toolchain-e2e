@@ -16,6 +16,59 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+func TestApplyPostInstallTemplates(t *testing.T) {
+	scheme, err := configuration.NewScheme()
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		// given
+		cl := test.NewFakeClient(t)
+
+		// when
+		err := ApplyPostInstallTemplates(context.TODO(), cl, scheme, []string{"post-install/rhoai.yaml"})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid template file", func(t *testing.T) {
+		// given
+		cl := test.NewFakeClient(t)
+
+		// when
+		err := ApplyPostInstallTemplates(context.TODO(), cl, scheme, []string{"post-install/does-not-exist.yaml"})
+
+		// then
+		require.ErrorContains(t, err, "invalid template file: 'post-install/does-not-exist.yaml'")
+	})
+}
+
+func TestPostInstallTemplatePaths(t *testing.T) {
+	rhoaiIndex := -1
+	for i, name := range Templates {
+		if name == "rhoai.yaml" {
+			rhoaiIndex = i
+			break
+		}
+	}
+	require.NotEqual(t, -1, rhoaiIndex)
+
+	t.Run("includes rhoai when the limit reaches its install template", func(t *testing.T) {
+		paths := PostInstallTemplatePaths(Templates, rhoaiIndex+1)
+		require.Equal(t, []string{postInstallPathPrefix + "rhoai.yaml"}, paths)
+	})
+
+	t.Run("omits rhoai when the limit stops before its install template", func(t *testing.T) {
+		paths := PostInstallTemplatePaths(Templates, rhoaiIndex)
+		require.Empty(t, paths)
+	})
+
+	t.Run("ignores install templates that have no post-install file", func(t *testing.T) {
+		paths := PostInstallTemplatePaths([]string{"kiali.yaml", "devspaces.yaml"}, 2)
+		require.Empty(t, paths)
+	})
+}
+
 func TestEnsureOperatorsInstalled(t *testing.T) {
 	csvTimeout = time.Millisecond
 	scheme, err := configuration.NewScheme()
