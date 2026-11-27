@@ -27,20 +27,20 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			cl := test.NewFakeClient(t)
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
-					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
+					sub.Status.CurrentCSV = "openshift-pipelines-operator-rh.v1.23.0" // set CurrentCSV to simulate a good subscription
 					return nil
 				}
 
 				if csv, ok := obj.(*v1alpha1.ClusterServiceVersion); ok {
-					kialiCSV := kialiCSV(v1alpha1.CSVPhaseSucceeded)
-					kialiCSV.DeepCopyInto(csv)
+					pipelinesCSV := pipelinesCSV(v1alpha1.CSVPhaseSucceeded)
+					pipelinesCSV.DeepCopyInto(csv)
 					return nil
 				}
 				return cl.Client.Get(ctx, key, obj, opts...)
 			}
 
 			// when
-			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/pipelines.yaml"})
 
 			// then
 			require.NoError(t, err)
@@ -62,10 +62,10 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/pipelines.yaml"})
 
 			// then
-			require.EqualError(t, err, "could not apply resource 'kiali-ossm' in namespace 'openshift-operators': unable to patch 'operators.coreos.com/v1alpha1, Kind=Subscription' called 'kiali-ossm' in namespace 'openshift-operators': Test client error")
+			require.EqualError(t, err, "could not apply resource 'openshift-pipelines-operator-rh' in namespace 'openshift-operators': unable to patch 'operators.coreos.com/v1alpha1, Kind=Subscription' called 'openshift-pipelines-operator-rh' in namespace 'openshift-operators': Test client error")
 		})
 		t.Run("error when getting subscription", func(t *testing.T) {
 			// given
@@ -82,10 +82,10 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/pipelines.yaml"})
 
 			// then
-			require.ErrorContains(t, err, "could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
+			require.ErrorContains(t, err, "could not find a Subscription with name 'openshift-pipelines-operator-rh' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
 		})
 
 		t.Run("error when getting csv", func(t *testing.T) {
@@ -93,7 +93,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			cl := test.NewFakeClient(t)
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
-					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
+					sub.Status.CurrentCSV = "openshift-pipelines-operator-rh.v1.23.0" // set CurrentCSV to simulate a good subscription
 					return nil
 				}
 
@@ -104,10 +104,10 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/pipelines.yaml"})
 
 			// then
-			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
+			require.EqualError(t, err, "failed to find CSV 'openshift-pipelines-operator-rh.v1.23.0' with Phase 'Succeeded': could not find a CSV with name 'openshift-pipelines-operator-rh.v1.23.0' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
 		})
 
 		t.Run("csv has wrong phase", func(t *testing.T) {
@@ -115,23 +115,23 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			cl := test.NewFakeClient(t)
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
-					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
+					sub.Status.CurrentCSV = "openshift-pipelines-operator-rh.v1.23.0" // set CurrentCSV to simulate a good subscription
 					return nil
 				}
 
 				if csv, ok := obj.(*v1alpha1.ClusterServiceVersion); ok {
-					kialiCSV := kialiCSV(v1alpha1.CSVPhaseFailed)
-					kialiCSV.DeepCopyInto(csv)
+					pipelinesCSV := pipelinesCSV(v1alpha1.CSVPhaseFailed)
+					pipelinesCSV.DeepCopyInto(csv)
 					return nil
 				}
 				return cl.Client.Get(ctx, key, obj, opts...)
 			}
 
 			// when
-			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/pipelines.yaml"})
 
 			// then
-			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
+			require.EqualError(t, err, "failed to find CSV 'openshift-pipelines-operator-rh.v1.23.0' with Phase 'Succeeded': could not find a CSV with name 'openshift-pipelines-operator-rh.v1.23.0' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
 		})
 		t.Run("no subscription in template", func(t *testing.T) {
 			// given
@@ -146,10 +146,10 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 	})
 }
 
-func kialiCSV(phase v1alpha1.ClusterServiceVersionPhase) *v1alpha1.ClusterServiceVersion {
+func pipelinesCSV(phase v1alpha1.ClusterServiceVersionPhase) *v1alpha1.ClusterServiceVersion {
 	return &v1alpha1.ClusterServiceVersion{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kiali-operator.v1.24.7",
+			Name:      "openshift-pipelines-operator-rh.v1.23.0",
 			Namespace: "openshift-operators",
 		},
 		Spec: v1alpha1.ClusterServiceVersionSpec{},
