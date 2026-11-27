@@ -38,10 +38,22 @@ var Templates = []string{
 	"ansible-automation-platform.yaml",
 	"cnv.yaml",
 	"openshift-lightspeed.yaml",
+	"rhoai.yaml",
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
-var csvTimeout = 10 * time.Second
+// PostInstallTemplates are applied after operator installation completes.
+// A post-install template is applied only when an install template with the same filename was installed.
+var PostInstallTemplates = []string{
+	"rhoai.yaml",
+}
+
+const postInstallPathPrefix = "setup/operators/post-install/"
+
+var (
+	csvTimeout              = 10 * time.Second
+	postInstallApplyTimeout = 5 * time.Minute
+)
 
 func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	subs := &v1alpha1.SubscriptionList{}
@@ -64,15 +76,56 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	return fmt.Errorf("the sandbox host and/or member operators were not found")
 }
 
-func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
+func processTemplateFile(s *runtime.Scheme, templatePath string) ([]client.Object, error) {
+	tmpl, err := templates.GetTemplateFromFile(templatePath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid template file: '%s': %w", templatePath, err)
+	}
+
+	processor := ctemplate.NewProcessor(s)
+	return processor.Process(tmpl.DeepCopy(), map[string]string{})
+}
+
+// PostInstallTemplatePaths returns the post-install templates that correspond to install templates selected by limit.
+// limit is the number of leading install templates that were installed, matching --operators-limit.
+func PostInstallTemplatePaths(installTemplates []string, limit int) []string {
+	if limit < 0 {
+		limit = 0
+	}
+	if limit > len(installTemplates) {
+		limit = len(installTemplates)
+	}
+	var paths []string
+	for i := 0; i < limit; i++ {
+		for _, name := range PostInstallTemplates {
+			if name == installTemplates[i] {
+				paths = append(paths, postInstallPathPrefix+name)
+			}
+		}
+	}
+	return paths
+}
+
+func ApplyPostInstallTemplates(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
 	for _, templatePath := range templatePaths {
-		tmpl, err := templates.GetTemplateFromFile(templatePath)
+		objsToProcess, err := processTemplateFile(s, templatePath)
 		if err != nil {
-			return fmt.Errorf("invalid template file: '%s': %w", templatePath, err)
+			return err
 		}
 
-		processor := ctemplate.NewProcessor(s)
-		objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
+		if err := templates.ApplyObjectsWithRetryTimeout(ctx, cl, objsToProcess, postInstallApplyTimeout); err != nil {
+			return err
+		}
+
+		fmt.Printf("Applied post-install template '%s'\n\n", templatePath)
+	}
+
+	return nil
+}
+
+func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
+	for _, templatePath := range templatePaths {
+		objsToProcess, err := processTemplateFile(s, templatePath)
 		if err != nil {
 			return err
 		}

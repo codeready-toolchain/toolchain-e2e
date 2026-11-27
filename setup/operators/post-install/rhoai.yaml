@@ -1,0 +1,135 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: rhoai-post-install
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${RHOAI_APPS_NAMESPACE}
+  - kind: DSCInitialization
+    apiVersion: dscinitialization.opendatahub.io/v1
+    metadata:
+      name: default-dsci
+    spec:
+      applicationsNamespace: redhat-ods-applications
+      monitoring:
+        managementState: Managed
+        namespace: redhat-ods-monitoring
+      trustedCABundle:
+        customCABundle: ''
+        managementState: Removed
+  - apiVersion: datasciencecluster.opendatahub.io/v2
+    kind: DataScienceCluster
+    metadata:
+      name: default-dsc
+    spec:
+      components:
+        dashboard:
+          managementState: Managed
+        aipipelines:
+          managementState: Managed
+        kserve:
+          managementState: Managed
+          # Raw deployment is configured via rawDeploymentServiceConfig (v2 API).
+          # The v1 fields `defaultDeploymentMode` and `serving` were removed from the
+          # v2 DataScienceCluster schema in RHOAI 3.5; if set, the apiserver prunes
+          # them, causing a permanent Argo CD OutOfSync/self-heal loop.
+          rawDeploymentServiceConfig: Headed
+          nim:
+            managementState: Removed
+        kueue:
+          managementState: Removed
+        modelregistry:
+          managementState: Removed
+        ray:
+          managementState: Removed # Not used by the Sandbox vLLM/MaaS inference path in 3.x; enabling it in 3.5 would require the Kueue Operator + cert-manager as prerequisites
+        trainingoperator:
+          managementState: Managed
+        trainer:
+          managementState: Removed
+        trustyai:
+          managementState: Removed
+        workbenches:
+          managementState: Managed
+        feastoperator:
+          managementState: Removed
+        llamastackoperator:
+          managementState: Removed
+        ogx:
+          managementState: Managed
+        mlflowoperator:
+          managementState: Managed
+        sparkoperator:
+          managementState: Removed
+  - apiVersion: opendatahub.io/v1alpha
+    kind: OdhDashboardConfig
+    metadata:
+      name: odh-dashboard-config
+      namespace: ${RHOAI_APPS_NAMESPACE}
+    spec:
+      dashboardConfig:
+        aiAssetCustomEndpoints: false
+        automl: false
+        autorag: false
+        disableAdminConnectionTypes: false
+        disableBYONImageStream: false
+        disableClusterManager: false
+        disableCustomServingRuntimes: false
+        disableDistributedWorkloads: false
+        disableHome: false
+        disableISVBadges: false
+        disableInfo: false
+        disableKServe: false
+        disableKServeAuth: false
+        disableKServeMetrics: false
+        disableKServeRaw: false
+        disableKueue: false
+        disableLMEval: false
+        disableModelCatalog: false
+        disableModelRegistry: true
+        disableModelRegistrySecureDB: false
+        disableModelServing: false
+        disableNIMModelServing: true
+        disablePerformanceMetrics: false
+        disablePipelines: false
+        disableProjectScoped: false
+        disableProjectSharing: true
+        disableProjects: false
+        disableServingRuntimeParams: false
+        disableStorageClasses: false
+        disableSupport: false
+        disableTracking: false
+        disableTrustyBiasMetrics: true
+        disableUserManagement: false
+        enablement: true
+        genAiStudio: true
+        genAiTracing: true
+        guardrails: true
+        mcpCatalog: false
+        modelAsService: true
+        observabilityDashboard: true
+        trainingJobs: true
+      genAiStudioConfig:
+        aiAssetCustomEndpoints:
+          clusterDomains: []
+          externalProviders: false
+      notebookController:
+        enabled: false
+        pvcSize: "20Gi"
+        notebookNamespace: rhods-notebooks
+      hardwareProfileOrder: []
+      templateOrder: []
+      templateDisablement: []
+  - apiVersion: services.platform.opendatahub.io/v1alpha1
+    kind: Auth
+    metadata:
+      name: auth
+    spec:
+      adminGroups:
+        - rhods-admins
+      allowedGroups:
+        - system:authenticated
+parameters:
+  - name: RHOAI_APPS_NAMESPACE
+    value: redhat-ods-applications
